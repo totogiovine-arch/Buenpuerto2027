@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Buen Puerto — Temporada 2027</title>
+<style>
+  :root{
+    --navy:#1b2a4a;
+    --navy-dark:#152238;
+    --gold:#d4a94a;
+    --confirmado:#c0392b;
+    --color-violeta:#7e57c2;
+    --color-amarillo:#e0ab2c;
+    --libre-alt:#eaf4fa;
+    --text:#1b2a4a;
+    --muted:#8a93a3;
+    --border:#e2e6ec;
+
+    /* paleta oscura, solo para el área del calendario (no para el diálogo) */
+    --cal-bg:#101c34;
+    --cal-bg-alt:#233457;
+    --cal-border:rgba(255,255,255,.08);
+    --cal-text-muted:#94a3c2;
+    --cal-dash:rgba(255,255,255,.28);
+    --dia-alto:30px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
+
+  .tab-btn{
+    background:#1f3157;border:none;border-radius:20px;
+    padding:8px 14px;font-size:11px;font-weight:600;
+    color:#fff;cursor:pointer;white-space:nowrap;
+  }
+  .tab-btn.active{background:var(--gold);color:var(--navy-dark);}
+
+  .scroll-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+
+  table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;}
+  thead th{
+    background:var(--navy);
+    color:var(--gold);
+    font-size:10.5px;
+    font-weight:700;
+    text-align:center;
+    padding:10px 4px;
+    position:sticky;top:0;
+    z-index:15;
+    border-right:1px solid rgba(255,255,255,.08);
+  }
+  thead th .rango{display:block;color:#c9d2e2;font-weight:400;font-size:9.5px;margin-top:2px;}
+  thead th:first-child{
+    text-align:left;
+    padding-left:8px;
+    color:var(--gold);
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.3px;
+    position:sticky;left:0;top:0;z-index:20;
+  }
+
+  tbody td.unit{
+    position:sticky;left:0;
+    background:inherit;
+    padding:8px 4px 8px 8px;
+    border-right:2px solid var(--gold);
+    overflow:hidden;
+    z-index:8;
+  }
+  tbody tr:nth-child(odd) td.unit{background:var(--cal-bg);}
+  tbody tr:nth-child(even) td.unit{background:var(--cal-bg-alt);}
+
+  .unit-name{font-size:11px;font-weight:600;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .unit-code{font-size:9px;color:var(--cal-text-muted);display:block;margin-top:1px;white-space:nowrap;}
+
+  td.cell{
+    padding:3px 2px;
+    text-align:center;
+    border-right:1px solid var(--cal-border);
+  }
+  td.cell.media-am{border-right:none;}
+  tbody tr:nth-child(odd) td.cell{background:var(--cal-bg);}
+  tbody tr:nth-child(even) td.cell{background:var(--cal-bg-alt);}
+
+  .slot{
+    height:var(--dia-alto);
+    border-radius:6px;
+    background:transparent;
+    border:none;
+    cursor:pointer;
+    transition:transform .08s ease;
+    display:flex;align-items:center;justify-content:center;
+    font-size:7px;line-height:1.05;font-weight:700;color:#fff;
+    text-align:center;
+    white-space:normal;
+    word-break:break-word;
+    overflow:hidden;
+    padding:1px 3px;
+    user-select:none;
+  }
+  .slot:active{transform:scale(.94);}
+  .slot.confirmado{background:var(--confirmado); border:none;}
+  .slot.violeta{background:var(--color-violeta); border:none;}
+  .slot.amarillo{background:var(--color-amarillo); border:none; color:var(--navy);}
+
+  #fixedHeadInner table{border-collapse:separate;border-spacing:0;table-layout:fixed;}
+  #fixedHeadInner thead th{position:static !important;}
+
+  footer{
+    background:var(--navy-dark);
+    padding:10px 16px;
+    text-align:center;
+    font-size:10px;
+    color:#7d88a0;
+  }
+
+  dialog{
+    border:none;border-radius:12px;padding:0;width:min(320px,88vw);
+    box-shadow:0 20px 60px rgba(0,0,0,.3);
+  }
+  dialog::backdrop{background:rgba(21,34,56,.55);}
+  .dlg-head{background:var(--navy);color:#fff;padding:14px 16px;font-size:14px;font-weight:600;}
+  .dlg-head small{display:block;color:var(--gold);font-weight:400;font-size:11px;margin-top:2px;}
+  .dlg-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+  .dlg-body input{
+    border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:13px;
+  }
+  .duracion-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .duracion-row label{font-size:12px;color:var(--muted);}
+  .duracion-row input{width:60px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;text-align:center;}
+  .duracion-row select{flex:1;min-width:90px;border:1px solid var(--border);border-radius:8px;padding:6px 6px;font-size:12.5px;}
+  .duracion-row select:disabled{background:#f4f5f7;color:var(--muted);}
+
+  .color-picker{display:flex;flex-direction:column;gap:8px;padding-top:2px;}
+  .color-opcion{display:flex;align-items:center;gap:10px;cursor:pointer;background:none;border:none;padding:2px 0;text-align:left;}
+  .color-opcion span.texto{font-size:12px;font-weight:600;color:var(--text);}
+  .color-swatch{
+    width:24px;height:24px;border-radius:50%;
+    border:2px solid transparent;cursor:pointer;
+    padding:0;flex-shrink:0;
+  }
+  .swatch-rojo{background:var(--confirmado);}
+  .swatch-violeta{background:var(--color-violeta);}
+  .swatch-amarillo{background:var(--color-amarillo);}
+  .color-swatch.selected{border-color:var(--navy); box-shadow:0 0 0 2px #fff inset;}
+
+  .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;}
+  .dlg-actions button{
+    flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .btn-guardar{background:var(--navy);color:#fff;}
+  .btn-borrar{background:#f1f2f4;color:var(--text);}
+  .btn-cerrar{background:transparent;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<div id="topBar" style="display:flex; align-items:center; background:var(--navy-dark); border-bottom:1px solid var(--cal-border);">
+  <div id="tabBar" style="display:flex; gap:8px; padding:10px 16px; overflow-x:auto; flex:1; min-width:0;">
+    <button class="tab-btn" data-vista="sep2026" id="tabSep2026">Sept 26</button>
+    <button class="tab-btn" data-vista="oct2026" id="tabOct2026">Oct 26</button>
+    <button class="tab-btn" data-vista="nov2026" id="tabNov2026">Nov 26</button>
+    <button class="tab-btn" data-vista="dic2026" id="tabDic2026">Dic 26</button>
+    <button class="tab-btn active" data-vista="temporada" id="tabTemporada">Temporada 27</button>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; padding:0 12px; flex-shrink:0;">
+    <button id="btnBuscar" title="Buscar inquilino" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">🔍</button>
+    <button id="btnExportarCal" title="Exportar a Google Calendar" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">📅</button>
+    <button id="btnHoy" title="Ir a hoy" style="background:var(--gold); border:none; border-radius:16px; padding:8px 12px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--navy-dark); white-space:nowrap;">Hoy</button>
+  </div>
+</div>
+
+<div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
+
+<div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
+
+<button id="btnDeshacer" title="Deshacer último cambio (Ctrl+Z)" style="display:none; position:fixed; bottom:18px; right:18px; z-index:60; background:var(--navy); color:#fff; border:none; border-radius:24px; padding:10px 16px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,.25); cursor:pointer;">↩️ Deshacer</button>
+
+<div id="fixedHead" style="display:none; position:fixed; top:0; left:0; right:0; overflow:hidden; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.15);">
+  <div id="fixedHeadInner"></div>
+</div>
+
+<div class="scroll-wrap" id="scrollWrap">
+  <table id="mainTable">
+    <thead>
+      <tr id="headRow"><th>BP · TEMPORADA 2027</th></tr>
+    </thead>
+    <tbody id="bodyTable"></tbody>
+  </table>
+</div>
+
+<footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
+
+<dialog id="dlg">
+  <div class="dlg-head">
+    <span id="dlgTitle">Unidad</span>
+    <small id="dlgSub">Semana</small>
+  </div>
+  <div id="dlgNormal">
+    <div class="dlg-body">
+      <input id="inpNombre" type="text" placeholder="Nombre inquilino">
+      <input id="inpNota" type="text" placeholder="Nota (opcional)">
+      <div class="duracion-row" id="duracionRow">
+        <label for="inpDuracion" id="lblDuracion">Duración (semanas)</label>
+        <input id="inpDuracion" type="number" min="1" value="1">
+      </div>
+      <div class="duracion-row" id="rangoFechaRow" style="display:none;">
+        <label for="selDesde">Desde</label>
+        <select id="selDesde" disabled></select>
+        <label for="selHasta">Hasta</label>
+        <select id="selHasta"></select>
+      </div>
+      <div class="color-picker">
+        <button type="button" class="color-opcion" data-color="rojo">
+          <span class="color-swatch swatch-rojo" aria-hidden="true"></span>
+          <span class="texto">RESERVADO</span>
+        </button>
+        <button type="button" class="color-opcion" data-color="amarillo">
+          <span class="color-swatch swatch-amarillo" aria-hidden="true"></span>
+          <span class="texto">RESERVA LÁPIZ</span>
+        </button>
+        <button type="button" class="color-opcion" data-color="violeta">
+          <span class="color-swatch swatch-violeta" aria-hidden="true"></span>
+          <span class="texto">BLOQUEADO</span>
+        </button>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn-borrar" id="btnBorrar">Borrar</button>
+      <button class="btn-guardar" id="btnGuardar">Guardar</button>
+      <button class="btn-cerrar" id="btnCerrar">Cerrar</button>
+    </div>
+  </div>
+  <div id="dlgConfirm" style="display:none;">
+    <div class="dlg-body">
+      <p id="dlgConfirmMsg" style="margin:0; font-size:13px; color:var(--text); line-height:1.4;"></p>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn-borrar" id="btnConfirmSi">Sí, borrar</button>
+      <button class="btn-cerrar" id="btnConfirmNo">No, volver</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="confirmGenDlg">
+  <div class="dlg-head"><span>Confirmar</span></div>
+  <div class="dlg-body"><p id="confirmGenMsg" style="margin:0;font-size:13px;line-height:1.4;color:var(--text);"></p></div>
+  <div class="dlg-actions">
+    <button class="btn-borrar" id="confirmGenSi">Sí</button>
+    <button class="btn-cerrar" id="confirmGenNo">No</button>
+  </div>
+</dialog>
+
+<dialog id="dlgBuscar" style="width:min(360px,92vw);">
+  <div class="dlg-head"><span>Buscar inquilino</span></div>
+  <div class="dlg-body">
+    <input id="inpBuscar" type="text" placeholder="Escribí un nombre...">
+    <div id="resultadosBuscar" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+  </div>
+  <div class="dlg-actions">
+    <button class="btn-cerrar" id="btnCerrarBuscar">Cerrar</button>
+  </div>
+</dialog>
+
+<div id="syncIndicador" style="display:none; position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:80; background:var(--navy); color:#fff; padding:5px 12px; border-radius:12px; font-size:10.5px; box-shadow:0 2px 8px rgba(0,0,0,.25);">🔄 Sincronizando…</div>
+
+<script type="module">
+  // ---- Conexión a Firebase (Firestore = base de datos compartida, Auth anónima = seguridad) ----
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEYSLt4NDCLZ7xpUR3h8tdVBSjDiZ0lXE",
+    authDomain: "calendario-app-bp.firebaseapp.com",
+    projectId: "calendario-app-bp",
+    storageBucket: "calendario-app-bp.firebasestorage.app",
+    messagingSenderId: "786928589358",
+    appId: "1:786928589358:web:4943d9572bedd483abddbf"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  window.__fb = { db, doc, getDoc, setDoc, onSnapshot };
+
+  window.__fbAuthReady = new Promise((resolve, reject)=>{
+    onAuthStateChanged(auth, (user)=>{
+      if(user) resolve(user);
+    });
+    signInAnonymously(auth).catch((err)=>{
+      console.error("Error de autenticación con Firebase:", err);
+      reject(err);
+    });
+  });
+</script>
+
+<script type="module">
+  const UNIDADES = [
+    {nombre:"Puerto Nuevo", codigo:"BP 1"},
+    {nombre:"Puerto Deseado", codigo:"BP 2"},
+    {nombre:"Puerto de la Boca", codigo:"BP 3"},
+    {nombre:"Puerto Blest", codigo:"BP 4"},
+    {nombre:"Puerto Madero", codigo:"BP 5"},
+    {nombre:"Puerto Pañuelo", codigo:"BP 6"},
+    {nombre:"Caleta Olivia", codigo:"BP 7"},
+    {nombre:"Puerto Pirámides", codigo:"BP 8"},
+    {nombre:"Puerto de Frutos", codigo:"BP 9"},
+    {nombre:"Puerto San Julián", codigo:"BP 10"},
+    {nombre:"Puerto San Carlos", codigo:"BP 11"},
+    {nombre:"Puerto Esmeralda", codigo:"BP 12"},
+    {nombre:"Puerto Piray", codigo:"BP 13"},
+    {nombre:"Puerto Epuyén", codigo:"BP 14"},
+    {nombre:"Puerto Jaramillo", codigo:"BP 15"},
+    {nombre:"Puerto Canoa", codigo:"BP 16"},
+    {nombre:"Puerto Madryn", codigo:"BP 17"},
+    {nombre:"Puerto Iguazú", codigo:"BP 18"},
+  ];
+
+  const SEMANAS = [
+    {label:"SEM 0", rango:"19–26 Dic", inicio:"2026-12-19"},
+    {label:"SEM 1", rango:"26 Dic–2 Ene", inicio:"2026-12-26"},
+    {label:"SEM 2", rango:"2–9 Ene", inicio:"2027-01-02"},
+    {label:"SEM 3", rango:"9–16 Ene", inicio:"2027-01-09"},
+    {label:"SEM 4", rango:"16–23 Ene", inicio:"2027-01-16"},
+    {label:"SEM 5", rango:"23–30 Ene", inicio:"2027-01-23"},
+    {label:"SEM 6", rango:"30 Ene–6 Feb", inicio:"2027-01-30"},
+    {label:"SEM 7", rango:"6–13 Feb", inicio:"2027-02-06"},
+    {label:"SEM 8", rango:"13–20 Feb", inicio:"2027-02-13"},
+    {label:"SEM 9", rango:"20–27 Feb", inicio:"2027-02-20"},
+  ];
+
+  const DIAS_SEMANA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  function generarDiasMes(anio, mesIndex0){
+    const dias = [];
+    const cantidad = new Date(anio, mesIndex0+1, 0).getDate();
+    for(let d=1; d<=cantidad; d++){
+      const fecha = new Date(anio, mesIndex0, d);
+      const iso = fecha.getFullYear()+"-"+String(fecha.getMonth()+1).padStart(2,"0")+"-"+String(fecha.getDate()).padStart(2,"0");
+      dias.push({label:String(d), rango:DIAS_SEMANA[fecha.getDay()], inicio:iso});
+    }
+    return dias;
+  }
+
+  // Cada día real se parte en 2 columnas (mañana/tarde) para poder tener
+  // un checkout a la mañana y un checkin a la tarde en la misma unidad y día.
+  function generarMediosDias(anio, mesIndex0){
+    const dias = generarDiasMes(anio, mesIndex0);
+    const medios = [];
+    dias.forEach(d=>{
+      medios.push({label:d.label, rango:d.rango, inicio:d.inicio, turno:"AM", turnoTexto:"mañana (hasta 10:00 / checkout)"});
+      medios.push({label:d.label, rango:d.rango, inicio:d.inicio, turno:"PM", turnoTexto:"tarde (desde 14:00 / checkin)"});
+    });
+    return medios;
+  }
+
+  const DIAS_SEP2026 = generarMediosDias(2026, 8);  // mes 8 = Septiembre (0-indexado)
+  const DIAS_OCT2026 = generarMediosDias(2026, 9);  // Octubre
+  const DIAS_NOV2026 = generarMediosDias(2026, 10); // Noviembre
+  const DIAS_DIC2026 = generarMediosDias(2026, 11); // Diciembre
+
+  const VISTAS = {
+    temporada: {
+      columnas: SEMANAS,
+      storageKey: "buenpuerto_2027_calendario_v3",
+      titulo: "TEMPORADA 2027",
+      esDiario: false
+    },
+    sep2026: {
+      columnas: DIAS_SEP2026,
+      storageKey: "buenpuerto_sep2026_calendario_v2",
+      titulo: "SEPTIEMBRE 2026",
+      esDiario: true
+    },
+    oct2026: {
+      columnas: DIAS_OCT2026,
+      storageKey: "buenpuerto_oct2026_calendario_v2",
+      titulo: "OCTUBRE 2026",
+      esDiario: true
+    },
+    nov2026: {
+      columnas: DIAS_NOV2026,
+      storageKey: "buenpuerto_nov2026_calendario_v2",
+      titulo: "NOVIEMBRE 2026",
+      esDiario: true
+    },
+    dic2026: {
+      columnas: DIAS_DIC2026,
+      storageKey: "buenpuerto_dic2026_calendario_v2",
+      titulo: "DICIEMBRE 2026",
+      esDiario: true
+    }
+  };
+
+  let vistaActual = "temporada";
+  let COLUMNAS = VISTAS[vistaActual].columnas;
+  let STORAGE_KEY = VISTAS[vistaActual].storageKey;
+
+
+  const DEFAULT_DATA_TEMPORADA = {
+      "0_4": {estado:"confirmado", nombre:"Maria Laura (Amigos Ale ITALIA)", nota:"", color:"rojo"},
+      "1_1": {estado:"confirmado", nombre:"Noelia (Amiga Laura Ponce )", nota:"", color:"rojo"},
+      "1_4": {estado:"confirmado", nombre:"Ale y Jael Lacelli", nota:"", color:"rojo"},
+      "1_5": {estado:"confirmado", nombre:"Ale y Jael Lacelli", nota:"", color:"rojo"},
+      "1_6": {estado:"confirmado", nombre:"Ale y Jael Lacelli", nota:"", color:"rojo"},
+      "2_1": {estado:"confirmado", nombre:"Mariela amiga Sabrina Cordoba", nota:"", color:"rojo"},
+      "2_2": {estado:"confirmado", nombre:"Chapu Vilariño", nota:"", color:"rojo"},
+      "2_3": {estado:"confirmado", nombre:"Chapu Vilariño", nota:"", color:"rojo"},
+      "2_4": {estado:"confirmado", nombre:"Rizzuto Vanesa", nota:"", color:"rojo"},
+      "2_5": {estado:"confirmado", nombre:"Jorgelina Mari", nota:"", color:"rojo"},
+      "2_6": {estado:"confirmado", nombre:"Diego Bersano", nota:"", color:"rojo"},
+      "2_8": {estado:"confirmado", nombre:"Vilma hermana Belen", nota:"", color:"rojo"},
+      "3_0": {estado:"confirmado", nombre:"Gaby y Jorge ( desde el 24/12 )", nota:"", color:"rojo"},
+      "3_1": {estado:"confirmado", nombre:"Gaby y Jorge", nota:"", color:"rojo"},
+      "3_2": {estado:"confirmado", nombre:"Gaby y Jorge", nota:"", color:"rojo"},
+      "3_3": {estado:"confirmado", nombre:"Cristian Fevre", nota:"", color:"rojo"},
+      "3_4": {estado:"confirmado", nombre:"Cristian Fevre", nota:"", color:"rojo"},
+      "3_5": {estado:"confirmado", nombre:"Gilda ( amigos de Ignacio Velazquez ) G4", nota:"", color:"rojo"},
+      "3_7": {estado:"confirmado", nombre:"Damian Sola", nota:"", color:"rojo"},
+      "3_8": {estado:"confirmado", nombre:"Marce Gomez G1", nota:"", color:"rojo"},
+      "3_9": {estado:"confirmado", nombre:"Marce Gomez G1", nota:"", color:"rojo"},
+      "4_3": {estado:"confirmado", nombre:"Reservada ADM", nota:"", color:"rojo"},
+      "4_4": {estado:"confirmado", nombre:"Maria Laura (Amigos Ale ITALIA)", nota:"", color:"rojo"},
+      "4_5": {estado:"confirmado", nombre:"Sebastian Zerba", nota:"", color:"rojo"},
+      "4_6": {estado:"confirmado", nombre:"Susana Sola", nota:"", color:"rojo"},
+      "4_7": {estado:"confirmado", nombre:"Susana Sola", nota:"", color:"rojo"},
+      "4_8": {estado:"confirmado", nombre:"Susana Sola", nota:"", color:"rojo"},
+      "5_2": {estado:"confirmado", nombre:"Alma Cursiva", nota:"", color:"rojo"},
+      "5_3": {estado:"confirmado", nombre:"Silvina Coquitos Carabobo", nota:"", color:"rojo"},
+      "5_4": {estado:"confirmado", nombre:"Laura Ponce (Nora Olivera G9)", nota:"", color:"rojo"},
+      "5_5": {estado:"confirmado", nombre:"Gustavo Bouza", nota:"", color:"rojo"},
+      "5_6": {estado:"confirmado", nombre:"Gustavo Bouza", nota:"", color:"rojo"},
+      "6_2": {estado:"confirmado", nombre:"Fabi Esposo Ma Alejandra Hermana Andy", nota:"", color:"rojo"},
+      "6_7": {estado:"confirmado", nombre:"Marcelo Said", nota:"", color:"rojo"},
+      "7_2": {estado:"confirmado", nombre:"Jorge Salleras", nota:"", color:"rojo"},
+      "7_3": {estado:"confirmado", nombre:"Jorge Salleras", nota:"", color:"rojo"},
+      "7_4": {estado:"confirmado", nombre:"Nora Olivera - (Laura Ponce G9)", nota:"", color:"rojo"},
+      "7_5": {estado:"confirmado", nombre:"Mary ALE", nota:"", color:"rojo"},
+      "7_6": {estado:"confirmado", nombre:"Karen Verdiglione", nota:"", color:"rojo"},
+      "8_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "8_3": {estado:"confirmado", nombre:"Diego Gallo", nota:"", color:"rojo"},
+      "8_5": {estado:"confirmado", nombre:"Lucas ( amigos de Ignacio Velazquez ) G4", nota:"", color:"rojo"},
+      "8_6": {estado:"confirmado", nombre:"Amadeo Cordiviola", nota:"", color:"rojo"},
+      "8_7": {estado:"confirmado", nombre:"Jorge y Vale G1", nota:"", color:"rojo"},
+      "8_8": {estado:"confirmado", nombre:"Jorge y Vale G1", nota:"", color:"rojo"},
+      "9_1": {estado:"confirmado", nombre:"Mario Ricardo González", nota:"", color:"rojo"},
+      "9_3": {estado:"confirmado", nombre:"Gustavo AMIGO FAMILIAR GARCIA G11", nota:"", color:"rojo"},
+      "9_5": {estado:"confirmado", nombre:"Mariana Schapiro", nota:"", color:"rojo"},
+      "9_7": {estado:"confirmado", nombre:"Fabiana Pelella", nota:"", color:"rojo"},
+      "9_8": {estado:"confirmado", nombre:"Nelson Wade", nota:"", color:"rojo"},
+      "10_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "10_4": {estado:"confirmado", nombre:"May Guirotane", nota:"", color:"rojo"},
+      "10_5": {estado:"confirmado", nombre:"Leoni Alvarez ( Lean De Leon )", nota:"", color:"rojo"},
+      "10_8": {estado:"confirmado", nombre:"Santiago Loprete G1", nota:"", color:"rojo"},
+      "10_9": {estado:"confirmado", nombre:"Santiago Loprete G1", nota:"", color:"rojo"},
+      "11_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "11_2": {estado:"confirmado", nombre:"Javier Quiropraxia 1er nivel", nota:"", color:"rojo"},
+      "11_3": {estado:"confirmado", nombre:"Lau Amiga Sergio Terrani", nota:"", color:"rojo"},
+      "11_4": {estado:"confirmado", nombre:"Cesar amigo Mariela", nota:"", color:"rojo"},
+      "11_5": {estado:"confirmado", nombre:"María Ines Zerba (Papas)", nota:"", color:"rojo"},
+      "11_7": {estado:"confirmado", nombre:"Dani ENAC G1", nota:"", color:"rojo"},
+      "11_8": {estado:"confirmado", nombre:"Dani ENAC G1", nota:"", color:"rojo"},
+      "12_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "12_1": {estado:"confirmado", nombre:"Analía Contreras", nota:"", color:"rojo"},
+      "12_2": {estado:"confirmado", nombre:"Analía Contreras", nota:"", color:"rojo"},
+      "12_3": {estado:"confirmado", nombre:"Analía Contreras", nota:"", color:"rojo"},
+      "12_5": {estado:"confirmado", nombre:"Ignacio Velazquez (Mendy) G4", nota:"", color:"rojo"},
+      "12_8": {estado:"confirmado", nombre:"Deby", nota:"", color:"rojo"},
+      "12_9": {estado:"confirmado", nombre:"Camila Garcia G1 1er nivel", nota:"", color:"rojo"},
+      "13_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "13_3": {estado:"confirmado", nombre:"Gustavo AMIGO FAMILIAR GARCIA G11", nota:"", color:"rojo"},
+      "13_4": {estado:"confirmado", nombre:"Cintia hermana Coco", nota:"", color:"rojo"},
+      "13_5": {estado:"confirmado", nombre:"Victorio Carosella", nota:"", color:"rojo"},
+      "13_6": {estado:"confirmado", nombre:"Victorio Carosella", nota:"", color:"rojo"},
+      "13_7": {estado:"confirmado", nombre:"Johanna Just G1", nota:"", color:"rojo"},
+      "13_8": {estado:"confirmado", nombre:"Johanna Just G1", nota:"", color:"rojo"},
+      "14_0": {estado:"confirmado", nombre:"Fernanda grupo NAVIDAD", nota:"", color:"rojo"},
+      "14_1": {estado:"confirmado", nombre:"Daniela Torres", nota:"", color:"rojo"},
+      "14_2": {estado:"confirmado", nombre:"Daniela Torres", nota:"", color:"rojo"},
+      "14_3": {estado:"confirmado", nombre:"Diego Labanca G3", nota:"", color:"rojo"},
+      "14_4": {estado:"confirmado", nombre:"Diego Labanca G3", nota:"", color:"rojo"},
+      "14_5": {estado:"confirmado", nombre:"María Ines Zerba", nota:"", color:"rojo"},
+      "14_6": {estado:"confirmado", nombre:"María Ines Zerba", nota:"", color:"rojo"},
+      "14_7": {estado:"confirmado", nombre:"Dani Cherniak G1", nota:"", color:"rojo"},
+      "15_1": {estado:"confirmado", nombre:"Noelia (Amiga Laura Ponce )", nota:"", color:"rojo"},
+      "15_3": {estado:"confirmado", nombre:"Nélida Higa G3", nota:"", color:"rojo"},
+      "15_4": {estado:"confirmado", nombre:"Nélida Higa G3", nota:"", color:"rojo"},
+      "15_5": {estado:"confirmado", nombre:"Mabel Vignatti", nota:"", color:"rojo"},
+      "15_6": {estado:"confirmado", nombre:"Mabel Vignatti", nota:"", color:"rojo"},
+      "15_7": {estado:"confirmado", nombre:"Mabel Vignatti", nota:"", color:"rojo"},
+      "15_8": {estado:"confirmado", nombre:"Mabel Vignatti", nota:"", color:"rojo"},
+      "15_9": {estado:"confirmado", nombre:"Mabel Vignatti", nota:"", color:"rojo"},
+      "16_0": {estado:"confirmado", nombre:"Reservada ADM", nota:"", color:"rojo"},
+      "16_1": {estado:"confirmado", nombre:"Reservada ADM", nota:"", color:"rojo"},
+      "16_2": {estado:"confirmado", nombre:"Reservada ADM", nota:"", color:"rojo"},
+      "16_3": {estado:"confirmado", nombre:"Marce de Leon G3 (Marcelo Dario)", nota:"", color:"rojo"},
+      "16_4": {estado:"confirmado", nombre:"Marce de Leon G3 (Marcelo Dario)", nota:"", color:"rojo"},
+      "16_5": {estado:"confirmado", nombre:"Martin Mendy Etulian", nota:"", color:"rojo"},
+      "16_6": {estado:"confirmado", nombre:"Romi 12 De Oct Rusell", nota:"", color:"rojo"},
+      "16_7": {estado:"confirmado", nombre:"Jorgelina Manganelli G1", nota:"", color:"rojo"},
+      "16_8": {estado:"confirmado", nombre:"Jorgelina Manganelli G1", nota:"", color:"rojo"},
+      "17_1": {estado:"confirmado", nombre:"Flor Tomkinson", nota:"", color:"rojo"},
+      "17_2": {estado:"confirmado", nombre:"Carolina Segovia", nota:"", color:"rojo"},
+      "17_3": {estado:"confirmado", nombre:"Carolina Segovia", nota:"", color:"rojo"},
+      "17_4": {estado:"confirmado", nombre:"Agus ( Sobrina Laura Ponce G9 )", nota:"", color:"rojo"},
+      "17_5": {estado:"confirmado", nombre:"Romina Villar", nota:"", color:"rojo"},
+      "17_6": {estado:"confirmado", nombre:"Romina Villar", nota:"", color:"rojo"},
+      "17_7": {estado:"confirmado", nombre:"Sabrina Cordoba", nota:"", color:"rojo"},
+      "17_8": {estado:"confirmado", nombre:"Sabrina Cordoba", nota:"", color:"rojo"},
+      "17_9": {estado:"confirmado", nombre:"Belen (Belu)", nota:"", color:"rojo"},
+    };
+  const DEFAULT_DATA_SEP2026 = {
+      "5_17": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "5_18": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "5_19": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "5_20": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "5_21": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "5_22": {estado:"confirmado", nombre:"Lorena Farias", nota:"", color:"rojo"},
+      "14_21": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+      "14_22": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+      "14_23": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+      "14_24": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+      "14_25": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+      "14_26": {estado:"confirmado", nombre:"Fran Vidal Bavio", nota:"", color:"rojo"},
+    };
+  const DEFAULT_DATA_OCT2026 = {
+      "8_27": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_28": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_29": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_30": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_31": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_32": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_33": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "8_34": {estado:"confirmado", nombre:"Abril", nota:"", color:"rojo"},
+      "17_17": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_18": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_19": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_20": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_21": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_22": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_23": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+      "17_24": {estado:"confirmado", nombre:"Sabri TBD", nota:"", color:"rojo"},
+    };
+  const DEFAULT_DATA_NOV2026 = {
+      "0_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "0_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "0_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "0_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "0_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "0_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "1_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "2_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "3_29": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_30": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_31": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_32": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_33": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_34": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_35": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_36": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_37": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_38": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_39": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_40": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_41": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_42": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_43": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "3_44": {estado:"confirmado", nombre:"Agos TBD", nota:"", color:"rojo"},
+      "4_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "4_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "4_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "4_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "4_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "4_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "5_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "6_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "7_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "8_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "9_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "10_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "11_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "12_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "13_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "14_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "15_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "16_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_11": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_12": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_13": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_14": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_15": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+      "17_16": {estado:"confirmado", nombre:"Cumple 15", nota:"", color:"rojo"},
+    };
+  const DEFAULT_DATA_DIC2026 = {
+      "1_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "1_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "2_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "3_7": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_8": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_9": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_10": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_11": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_12": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_13": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_14": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_15": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "3_16": {estado:"confirmado", nombre:"Evy", nota:"", color:"rojo"},
+      "4_7": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_8": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_9": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_10": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_11": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_12": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_13": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_14": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_15": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "4_16": {estado:"confirmado", nombre:"Ro", nota:"", color:"rojo"},
+      "5_7": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_8": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_9": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_10": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_11": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_12": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_13": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_14": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_15": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "5_16": {estado:"confirmado", nombre:"Cari", nota:"", color:"rojo"},
+      "6_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "6_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "7_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "8_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "9_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "10_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "11_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "12_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_7": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_8": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_9": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_10": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_11": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_12": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_13": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "13_14": {estado:"confirmado", nombre:"Rodri Esc Nata", nota:"", color:"rojo"},
+      "14_7": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_8": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_9": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_10": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_11": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_12": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_13": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_14": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_15": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "14_16": {estado:"confirmado", nombre:"Sergio", nota:"", color:"rojo"},
+      "15_7": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_8": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_9": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_10": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_11": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_12": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_13": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_14": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_15": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "15_16": {estado:"confirmado", nombre:"Bozzo", nota:"", color:"rojo"},
+      "16_7": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_8": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_9": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_10": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_11": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_12": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_13": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_14": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_15": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "16_16": {estado:"confirmado", nombre:"ADM", nota:"", color:"rojo"},
+      "17_7": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_8": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_9": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_10": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_11": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_12": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_13": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_14": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_15": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_16": {estado:"confirmado", nombre:"Maru", nota:"", color:"rojo"},
+      "17_23": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_24": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_25": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_26": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_27": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_28": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_29": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_30": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_31": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_32": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_33": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_34": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_35": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+      "17_36": {estado:"confirmado", nombre:"Marce D Gomez", nota:"", color:"rojo"},
+    };
+
+  const DATOS_INICIALES_POR_VISTA = {
+    temporada: DEFAULT_DATA_TEMPORADA,
+    sep2026: DEFAULT_DATA_SEP2026,
+    oct2026: DEFAULT_DATA_OCT2026,
+    nov2026: DEFAULT_DATA_NOV2026,
+    dic2026: DEFAULT_DATA_DIC2026
+  };
+
+  // ---- Capa de datos en tiempo real contra Firestore (reemplaza el localStorage local) ----
+  const COLECCION_FIRESTORE = "calendario";
+  const cacheDatosPorVista = {};       // última copia conocida de cada pestaña
+  const listenersActivos = {};         // un listener en vivo por pestaña
+  const syncIndicador = document.getElementById("syncIndicador");
+  let datos = {};                      // datos de la pestaña activa (alias del cache)
+
+  function mostrarIndicadorSync(){
+    syncIndicador.style.display = "block";
+    clearTimeout(mostrarIndicadorSync._t);
+    mostrarIndicadorSync._t = setTimeout(()=>{ syncIndicador.style.display = "none"; }, 900);
+  }
+
+  function iniciarListenerVista(vistaKey){
+    if(listenersActivos[vistaKey]) return;
+    const ref = window.__fb.doc(window.__fb.db, COLECCION_FIRESTORE, vistaKey);
+    listenersActivos[vistaKey] = window.__fb.onSnapshot(ref, (snap)=>{
+      let nuevosDatos;
+      if(snap.exists()){
+        nuevosDatos = snap.data().datos || {};
+      } else {
+        nuevosDatos = DATOS_INICIALES_POR_VISTA[vistaKey] || {};
+        window.__fb.setDoc(ref, {datos: nuevosDatos}).catch(e=> console.error("Error sembrando datos iniciales:", e));
+      }
+      cacheDatosPorVista[vistaKey] = nuevosDatos;
+      if(vistaKey === vistaActual){
+        const esPrimeraCarga = !window.__appIniciada;
+        datos = nuevosDatos;
+        if(!esPrimeraCarga){
+          mostrarIndicadorSync();
+          renderTodo();
+          ajustarAlturaCuadrada();
+          chequearAvisos();
+        }
+      }
+    }, (err)=>{
+      console.error("Error escuchando cambios de " + vistaKey + ":", err);
+      mostrarToast("No se pudo conectar con la base de datos en la nube.");
+    });
+  }
+
+  function esperarPrimerDato(vistaKey){
+    return new Promise((resolve)=>{
+      const ref = window.__fb.doc(window.__fb.db, COLECCION_FIRESTORE, vistaKey);
+      const unsub = window.__fb.onSnapshot(ref, (snap)=>{
+        unsub();
+        let nuevosDatos;
+        if(snap.exists()){
+          nuevosDatos = snap.data().datos || {};
+        } else {
+          nuevosDatos = DATOS_INICIALES_POR_VISTA[vistaKey] || {};
+          window.__fb.setDoc(ref, {datos: nuevosDatos}).catch(e=> console.error("Error sembrando datos iniciales:", e));
+        }
+        resolve(nuevosDatos);
+      }, (err)=>{
+        console.error("Error obteniendo " + vistaKey + ":", err);
+        resolve(DATOS_INICIALES_POR_VISTA[vistaKey] || {});
+      });
+    });
+  }
+
+  function guardarDatos(data){
+    cacheDatosPorVista[vistaActual] = data; // actualización local inmediata (optimista)
+    const ref = window.__fb.doc(window.__fb.db, COLECCION_FIRESTORE, vistaActual);
+    window.__fb.setDoc(ref, {datos: data}).catch(e=>{
+      console.error("Error guardando en Firestore:", e);
+      mostrarToast("No se pudo guardar en la nube — revisá tu conexión a internet.");
+    });
+  }
+
+  // ---- Confirmación genérica (independiente del cuadro de carga, para el botón Deshacer) ----
+  function confirmarGenerico(msg, alConfirmar, labelSi, labelNo){
+    const dlg2 = document.getElementById("confirmGenDlg");
+    document.getElementById("confirmGenMsg").textContent = msg;
+    const btnSi = document.getElementById("confirmGenSi");
+    const btnNo = document.getElementById("confirmGenNo");
+    btnSi.textContent = labelSi || "Sí";
+    btnNo.textContent = labelNo || "No";
+    dlg2.showModal();
+    const onSi = ()=>{ limpiar(); alConfirmar(); };
+    const onNo = ()=>{ limpiar(); };
+    function limpiar(){
+      dlg2.close();
+      btnSi.removeEventListener("click", onSi);
+      btnNo.removeEventListener("click", onNo);
+    }
+    btnSi.addEventListener("click", onSi);
+    btnNo.addEventListener("click", onNo);
+  }
+
+  // ---- Deshacer (como Ctrl+Z de Excel) ----
+  const UNDO_MAX = 20;
+  const undoStack = [];
+  const btnDeshacer = document.getElementById("btnDeshacer");
+
+  function pushUndo(){
+    undoStack.push(JSON.stringify(datos));
+    if(undoStack.length > UNDO_MAX) undoStack.shift();
+    actualizarBotonDeshacer();
+  }
+
+  function actualizarBotonDeshacer(){
+    btnDeshacer.style.display = undoStack.length > 0 ? "block" : "none";
+  }
+
+  function deshacer(){
+    if(undoStack.length === 0) return;
+    const anterior = undoStack.pop();
+    datos = JSON.parse(anterior);
+    guardarDatos(datos);
+    renderTodo();
+    actualizarBotonDeshacer();
+  }
+
+  function pedirDeshacer(){
+    if(undoStack.length === 0) return;
+    confirmarGenerico("¿Confirmás deshacer el último cambio?", deshacer, "Sí, deshacer", "No");
+  }
+
+  btnDeshacer.addEventListener("click", pedirDeshacer);
+  window.addEventListener("keydown", (e)=>{
+    const z = e.key === "z" || e.key === "Z";
+    if((e.ctrlKey || e.metaKey) && z){
+      e.preventDefault();
+      pedirDeshacer();
+    }
+  });
+
+  function key(uIdx,sIdx){ return uIdx+"_"+sIdx; }
+
+  // Armar encabezado
+  const headRow = document.getElementById("headRow");
+
+  function construirColgroup(){
+    const mainTable = document.getElementById("mainTable");
+    let colgroup = mainTable.querySelector("colgroup");
+    if(!colgroup){
+      colgroup = document.createElement("colgroup");
+      mainTable.insertBefore(colgroup, mainTable.firstChild);
+    }
+    colgroup.innerHTML = "";
+
+    const n = COLUMNAS.length;
+    const esDiario = VISTAS[vistaActual].esDiario;
+    const unitPercent = esDiario ? 9 : 11;
+    const colPercent = (100 - unitPercent) / n;
+    const colMinPx = esDiario ? 15 : 76;
+    const unitMinPx = esDiario ? 78 : 100;
+
+    const colUnidad = document.createElement("col");
+    colUnidad.style.width = unitPercent + "%";
+    colgroup.appendChild(colUnidad);
+
+    for(let i=0; i<n; i++){
+      const col = document.createElement("col");
+      col.style.width = colPercent + "%";
+      colgroup.appendChild(col);
+    }
+
+    mainTable.style.minWidth = (unitMinPx + n*colMinPx) + "px";
+  }
+
+  function ajustarAlturaCuadrada(){
+    if(!VISTAS[vistaActual].esDiario){
+      document.documentElement.style.removeProperty("--dia-alto");
+      return;
+    }
+    const primeraFila = document.querySelector("#bodyTable tr");
+    if(!primeraFila) return;
+    const celdas = primeraFila.querySelectorAll("td.cell");
+    if(celdas.length < 2) return;
+
+    // Medimos el ancho REAL ya renderizado de mañana+tarde del primer día (más confiable que calcularlo)
+    const anchoDiaCompletoPx = celdas[0].getBoundingClientRect().width + celdas[1].getBoundingClientRect().width;
+    if(!anchoDiaCompletoPx){ return; }
+
+    const paddingVertical = 6; // 3px arriba + 3px abajo (td.cell)
+    const altoSlot = Math.max(14, anchoDiaCompletoPx - paddingVertical);
+    document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
+  }
+
+  function construirHeader(){
+    headRow.innerHTML = "";
+    const thUnidad = document.createElement("th");
+    thUnidad.textContent = "BP · " + VISTAS[vistaActual].titulo;
+    headRow.appendChild(thUnidad);
+
+    if(VISTAS[vistaActual].esDiario){
+      // Cada día real ocupa 2 columnas (mañana/tarde) en el cuerpo,
+      // pero en el encabezado se ve como una sola celda por día.
+      for(let i=0; i<COLUMNAS.length; i+=2){
+        const s = COLUMNAS[i];
+        const th = document.createElement("th");
+        th.colSpan = 2;
+        th.innerHTML = s.label + '<span class="rango">'+s.rango+'</span>';
+        headRow.appendChild(th);
+      }
+    } else {
+      COLUMNAS.forEach(s=>{
+        const th = document.createElement("th");
+        th.innerHTML = s.label + '<span class="rango">'+s.rango+'</span>';
+        headRow.appendChild(th);
+      });
+    }
+
+    construirColgroup();
+  }
+
+  // A partir de acá, todo espera a que Firebase esté listo y hayamos traído la primera copia
+  // de datos de la pestaña activa — recién ahí se arma la tabla por primera vez.
+  window.__appIniciada = false;
+  try{
+    await window.__fbAuthReady;
+    datos = await esperarPrimerDato(vistaActual);
+    cacheDatosPorVista[vistaActual] = datos;
+  }catch(e){
+    console.error("No se pudo conectar con Firebase, se usan los datos iniciales:", e);
+    datos = DATOS_INICIALES_POR_VISTA[vistaActual] || {};
+    cacheDatosPorVista[vistaActual] = datos;
+  }
+
+  construirHeader();
+
+  // Armar cuerpo
+  const body = document.getElementById("bodyTable");
+
+  function agruparGenerico(datosVista, columnasVista, uIdx){
+    const grupos = [];
+    let i = 0;
+    while(i < columnasVista.length){
+      const d = datosVista[key(uIdx,i)];
+      const ocupado = d && (d.nombre || d.nota);
+      if(!ocupado){
+        grupos.push({inicio:i, fin:i, ocupado:false});
+        i++;
+        continue;
+      }
+      const color = d.color || "rojo";
+      const firma = (d.nombre||"") + "|" + (d.nota||"") + "|" + color;
+      let j = i+1;
+      while(j < columnasVista.length){
+        const d2 = datosVista[key(uIdx,j)];
+        const ocupado2 = d2 && (d2.nombre || d2.nota);
+        if(!ocupado2) break;
+        const color2 = d2.color || "rojo";
+        const firma2 = (d2.nombre||"") + "|" + (d2.nota||"") + "|" + color2;
+        if(firma2 !== firma) break;
+        j++;
+      }
+      grupos.push({inicio:i, fin:j-1, ocupado:true, nombre:d.nombre||"", nota:d.nota||"", color:color});
+      i = j;
+    }
+    return grupos;
+  }
+
+  function agruparSemanas(uIdx){
+    return agruparGenerico(datos, COLUMNAS, uIdx);
+  }
+
+  function construirFila(uIdx){
+    const u = UNIDADES[uIdx];
+    const tr = document.createElement("tr");
+
+    const tdUnit = document.createElement("td");
+    tdUnit.className = "unit";
+    tdUnit.innerHTML = '<span class="unit-name">'+u.nombre+'</span><span class="unit-code">'+u.codigo+'</span>';
+    tr.appendChild(tdUnit);
+
+    agruparSemanas(uIdx).forEach(g=>{
+      const td = document.createElement("td");
+      td.className = "cell";
+      if(g.fin > g.inicio) td.colSpan = (g.fin - g.inicio + 1);
+      // En vistas diarias, si la celda es la mitad "mañana" (índice par) le sacamos el borde
+      // derecho, así solo queda la línea entre un día y el siguiente (no entre mañana/tarde).
+      if(VISTAS[vistaActual].esDiario && g.inicio % 2 === 0){
+        td.classList.add("media-am");
+      }
+
+      const slot = document.createElement("div");
+      const claseColor = g.ocupado ? (g.color === "rojo" ? "confirmado" : g.color) : "";
+      slot.className = "slot" + (claseColor ? " "+claseColor : "");
+      slot.textContent = g.ocupado ? g.nombre : "";
+
+      slot.addEventListener("click", ()=>{
+        if(g.ocupado){
+          const rango = [];
+          for(let k=g.inicio;k<=g.fin;k++) rango.push(k);
+          abrirDialogo(uIdx, rango);
+        } else if(VISTAS[vistaActual].esDiario){
+          // Sin importar qué mitad tocaste, el alta siempre arranca a la tarde (checkin 14:00) del día tocado
+          const diaIdx = Math.floor(g.inicio / 2);
+          const inicioForzado = diaIdx*2 + 1; // índice de la "tarde" de ese día
+          abrirDialogo(uIdx, [inicioForzado]);
+        } else {
+          abrirDialogo(uIdx, [g.inicio]);
+        }
+      });
+
+      td.appendChild(slot);
+      tr.appendChild(td);
+    });
+
+    return tr;
+  }
+
+  function renderTodo(){
+    body.innerHTML = "";
+    UNIDADES.forEach((u,uIdx)=>{
+      body.appendChild(construirFila(uIdx));
+    });
+  }
+
+  renderTodo();
+  ajustarAlturaCuadrada();
+  requestAnimationFrame(ajustarAlturaCuadrada);
+
+  function refrescarFila(uIdx){
+    const filas = body.querySelectorAll("tr");
+    filas[uIdx].replaceWith(construirFila(uIdx));
+  }
+
+  // Dialogo
+  const dlg = document.getElementById("dlg");
+  const dlgTitle = document.getElementById("dlgTitle");
+  const dlgSub = document.getElementById("dlgSub");
+  const inpNombre = document.getElementById("inpNombre");
+  const inpNota = document.getElementById("inpNota");
+  const inpDuracion = document.getElementById("inpDuracion");
+  const duracionRow = document.getElementById("duracionRow");
+  const rangoFechaRow = document.getElementById("rangoFechaRow");
+  const selDesde = document.getElementById("selDesde");
+  const selHasta = document.getElementById("selHasta");
+  const dlgNormal = document.getElementById("dlgNormal");
+  const dlgConfirm = document.getElementById("dlgConfirm");
+  const dlgConfirmMsg = document.getElementById("dlgConfirmMsg");
+  const btnConfirmSi = document.getElementById("btnConfirmSi");
+  const btnConfirmNo = document.getElementById("btnConfirmNo");
+  let dlgU=null, dlgRango=[], dlgColor="rojo";
+
+  // Panel de confirmación propio (no depende del confirm() nativo del navegador,
+  // que en algunos navegadores/apps integradas no funciona)
+  function pedirConfirmacion(msg, alConfirmar, labelSi, labelNo){
+    dlgConfirmMsg.textContent = msg;
+    btnConfirmSi.textContent = labelSi || "Sí";
+    btnConfirmNo.textContent = labelNo || "No, volver";
+    dlgNormal.style.display = "none";
+    dlgConfirm.style.display = "block";
+
+    const onSi = ()=>{
+      limpiar();
+      alConfirmar();
+    };
+    const onNo = ()=>{
+      limpiar();
+    };
+    function limpiar(){
+      dlgConfirm.style.display = "none";
+      dlgNormal.style.display = "";
+      btnConfirmSi.removeEventListener("click", onSi);
+      btnConfirmNo.removeEventListener("click", onNo);
+    }
+    btnConfirmSi.addEventListener("click", onSi);
+    btnConfirmNo.addEventListener("click", onNo);
+  }
+
+  function marcarColorSeleccionado(){
+    document.querySelectorAll(".color-opcion").forEach(op=>{
+      const activo = op.dataset.color === dlgColor;
+      op.querySelector(".color-swatch").classList.toggle("selected", activo);
+    });
+  }
+
+  document.querySelectorAll(".color-opcion").forEach(op=>{
+    op.addEventListener("click", ()=>{
+      dlgColor = op.dataset.color;
+      marcarColorSeleccionado();
+    });
+  });
+
+  function abrirDialogo(uIdx, rango){
+    dlgU = uIdx; dlgRango = rango;
+    dlgConfirm.style.display = "none";
+    dlgNormal.style.display = "";
+    const u = UNIDADES[uIdx];
+    const inicio = rango[0], fin = rango[rango.length-1];
+    dlgTitle.textContent = u.nombre + " · " + u.codigo;
+    function formatColumna(idx){
+      const c = COLUMNAS[idx];
+      if(VISTAS[vistaActual].esDiario){
+        return c.label + " (" + c.rango + ") " + c.turnoTexto;
+      }
+      return c.label + " (" + c.rango + ")";
+    }
+
+    if(fin > inicio){
+      dlgSub.textContent = formatColumna(inicio) + "  →  " + formatColumna(fin);
+    } else {
+      dlgSub.textContent = formatColumna(inicio);
+    }
+
+    const d = datos[key(uIdx,inicio)] || {};
+    inpNombre.value = d.nombre || "";
+    inpNota.value = d.nota || "";
+
+    const esDiario = VISTAS[vistaActual].esDiario;
+    if(esDiario){
+      duracionRow.style.display = "none";
+      rangoFechaRow.style.display = "flex";
+
+      selDesde.disabled = true;
+      selDesde.innerHTML = '<option>' + formatColumna(inicio) + '</option>';
+
+      // El checkout (Hasta) siempre es a la mañana: solo ofrecemos índices "mañana" (pares) posteriores al inicio
+      selHasta.innerHTML = "";
+      let primerAM = inicio + 1;
+      if(primerAM % 2 !== 0) primerAM++;
+      for(let k=primerAM; k<COLUMNAS.length; k+=2){
+        const op = document.createElement("option");
+        op.value = k;
+        op.textContent = formatColumna(k);
+        selHasta.appendChild(op);
+      }
+      // Si la reserva actual ya termina en un valor válido, lo dejamos seleccionado; si no, el más cercano
+      const finAjustado = (fin % 2 === 0 && fin >= primerAM) ? fin : primerAM;
+      if(selHasta.querySelector('option[value="'+finAjustado+'"]')){
+        selHasta.value = finAjustado;
+      } else if(selHasta.options.length){
+        selHasta.value = selHasta.options[0].value;
+      }
+    } else {
+      duracionRow.style.display = "flex";
+      rangoFechaRow.style.display = "none";
+      inpDuracion.value = rango.length;
+      inpDuracion.max = COLUMNAS.length - inicio;
+    }
+
+    dlgColor = d.color || "rojo";
+    marcarColorSeleccionado();
+    dlg.showModal();
+  }
+
+  function borrarRango(rango){
+    pushUndo();
+    rango.forEach(sIdx=> delete datos[key(dlgU,sIdx)]);
+    guardarDatos(datos);
+    refrescarFila(dlgU);
+    dlg.close();
+  }
+
+  document.getElementById("btnGuardar").addEventListener("click", ()=>{
+    const nombreCargado = inpNombre.value.trim();
+    const notaCargada = inpNota.value.trim();
+    const quedaVacio = !nombreCargado && !notaCargada;
+    const esDiarioMsg = VISTAS[vistaActual].esDiario;
+    const inicio = dlgRango[0];
+    const unidadTiempoPlural = "semanas";
+
+    if(quedaVacio){
+      const msg = esDiarioMsg
+        ? "Esto va a borrar la reserva cargada en este tramo. ¿Confirmás?"
+        : (dlgRango.length > 1
+          ? "Esto va a borrar la reserva cargada en estas " + dlgRango.length + " " + unidadTiempoPlural + ". ¿Confirmás?"
+          : "Esto va a borrar la reserva cargada en este casillero. ¿Confirmás?");
+      pedirConfirmacion(msg, ()=> borrarRango(dlgRango), "Sí, borrar", "No, volver");
+      return;
+    }
+
+    // Calculamos el rango final: por fecha "Hasta" en la vista diaria, o por duración numérica en la semanal
+    let nuevoRango = [];
+    if(VISTAS[vistaActual].esDiario){
+      let finElegido = parseInt(selHasta.value, 10);
+      if(isNaN(finElegido) || finElegido < inicio) finElegido = inicio;
+      if(finElegido > COLUMNAS.length-1) finElegido = COLUMNAS.length-1;
+      for(let k=inicio; k<=finElegido; k++) nuevoRango.push(k);
+    } else {
+      let duracion = parseInt(inpDuracion.value, 10) || 1;
+      const maxDuracion = COLUMNAS.length - inicio;
+      if(duracion < 1) duracion = 1;
+      if(duracion > maxDuracion) duracion = maxDuracion;
+      for(let k=0; k<duracion; k++) nuevoRango.push(inicio+k);
+    }
+
+    function aplicarGuardado(){
+      pushUndo();
+      dlgRango.forEach(sIdx=>{
+        if(!nuevoRango.includes(sIdx)) delete datos[key(dlgU,sIdx)];
+      });
+      nuevoRango.forEach(sIdx=>{
+        datos[key(dlgU,sIdx)] = {estado:"confirmado", nombre:nombreCargado, nota:notaCargada, color:dlgColor};
+      });
+      guardarDatos(datos);
+      refrescarFila(dlgU);
+      dlg.close();
+    }
+
+    // Si el nuevo rango pisa semanas/días de OTRA reserva (nombre distinto), lo avisamos en el mismo mensaje
+    const conflictos = nuevoRango.filter(sIdx=>{
+      if(dlgRango.includes(sIdx)) return false; // ya era parte de este mismo bloque
+      const d = datos[key(dlgU,sIdx)];
+      return d && (d.nombre || d.nota) && d.nombre !== nombreCargado;
+    });
+
+    const habiaAlgoAntes = dlgRango.some(sIdx=>{
+      const d = datos[key(dlgU,sIdx)];
+      return d && (d.nombre || d.nota);
+    });
+
+    let msg, labelSi;
+    if(conflictos.length > 0){
+      const nombresConflicto = [...new Set(conflictos.map(sIdx=> (datos[key(dlgU,sIdx)]||{}).nombre || "(sin nombre)"))].join(", ");
+      msg = esDiarioMsg
+        ? "Ojo: vas a pisar la reserva de \"" + nombresConflicto + "\" en este tramo. ¿Confirmás?"
+        : "Ojo: vas a pisar la reserva de \"" + nombresConflicto + "\" en " + conflictos.length + " " + unidadTiempoPlural + ". ¿Confirmás?";
+      labelSi = "Sí, pisar reserva";
+    } else if(habiaAlgoAntes){
+      msg = esDiarioMsg
+        ? "¿Confirmás modificar esta reserva?"
+        : (nuevoRango.length > 1
+          ? "¿Confirmás modificar esta reserva en estas " + nuevoRango.length + " " + unidadTiempoPlural + "?"
+          : "¿Confirmás modificar esta reserva?");
+      labelSi = "Sí, modificar";
+    } else {
+      msg = esDiarioMsg
+        ? "¿Confirmás cargar esta reserva?"
+        : (nuevoRango.length > 1
+          ? "¿Confirmás cargar esta reserva para " + nuevoRango.length + " " + unidadTiempoPlural + "?"
+          : "¿Confirmás cargar esta reserva?");
+      labelSi = "Sí, cargar";
+    }
+
+    pedirConfirmacion(msg, aplicarGuardado, labelSi, "No, volver");
+  });
+
+  document.getElementById("btnBorrar").addEventListener("click", ()=>{
+    const esDiarioMsg = VISTAS[vistaActual].esDiario;
+    const msg = esDiarioMsg
+      ? "Esto va a borrar la reserva cargada en este tramo. ¿Confirmás?"
+      : (dlgRango.length > 1
+        ? "Esto va a borrar la reserva cargada en estas " + dlgRango.length + " semanas. ¿Confirmás?"
+        : "Esto va a borrar la reserva cargada en este casillero. ¿Confirmás?");
+    pedirConfirmacion(msg, ()=> borrarRango(dlgRango), "Sí, borrar", "No, volver");
+  });
+
+  document.getElementById("btnCerrar").addEventListener("click", ()=> dlg.close());
+
+  // ---- Avisos de ingreso (día antes del check-in) ----
+  const NOTIF_KEY = "buenpuerto_2027_notif_ok";
+
+  function hoyISO(){
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  function sumarDias(fechaISO, dias){
+    const d = new Date(fechaISO+"T00:00:00");
+    d.setDate(d.getDate()+dias);
+    return d;
+  }
+
+  function mismodia(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+
+  function ingresosDeManana(){
+    const hoy = hoyISO();
+    const resultado = [];
+    COLUMNAS.forEach((s, sIdx)=>{
+      const diaAntes = sumarDias(s.inicio, -1);
+      if(mismodia(hoy, diaAntes)){
+        UNIDADES.forEach((u, uIdx)=>{
+          const d = datos[key(uIdx,sIdx)];
+          if(d && d.estado === "confirmado"){
+            resultado.push({unidad:u.nombre, codigo:u.codigo, nombre:d.nombre || "(sin nombre cargado)", semana:s});
+          }
+        });
+      }
+    });
+    return resultado;
+  }
+
+  function chequearAvisos(){
+    const ingresos = ingresosDeManana();
+    const box = document.getElementById("avisoBox");
+    if(ingresos.length === 0){
+      box.style.display = "none";
+      return;
+    }
+    const lista = ingresos.map(i => `• ${i.unidad} (${i.codigo}) — ${i.nombre}`).join("<br>");
+    box.innerHTML = "<strong>🔔 Ingresan mañana:</strong><br>" + lista;
+    box.style.display = "block";
+
+    if("Notification" in window && Notification.permission === "granted"){
+      ingresos.forEach(i=>{
+        new Notification("Buen Puerto — Ingreso mañana", {
+          body: `${i.unidad} (${i.codigo}): ${i.nombre}`,
+        });
+      });
+    }
+  }
+
+  const btnActivarAvisos = null;
+
+  function actualizarEstadoBoton(){ /* botón removido del diseño; sin acción visual */ }
+
+  if("Notification" in window && Notification.permission === "default"){
+    Notification.requestPermission().then(()=>{ chequearAvisos(); });
+  }
+
+  actualizarEstadoBoton();
+  chequearAvisos();
+
+  // ---- Header de semanas "congelado" con JS (más confiable que el sticky nativo) ----
+  const scrollWrap = document.getElementById("scrollWrap");
+  const mainTable = document.getElementById("mainTable");
+  const fixedHead = document.getElementById("fixedHead");
+  const fixedHeadInner = document.getElementById("fixedHeadInner");
+  const theadOriginal = mainTable.querySelector("thead");
+
+  function construirHeaderFijo(){
+    fixedHeadInner.innerHTML = "";
+    const cloneTable = document.createElement("table");
+    cloneTable.style.width = mainTable.offsetWidth + "px";
+    cloneTable.style.minWidth = mainTable.offsetWidth + "px";
+    const colgroupOriginal = mainTable.querySelector("colgroup");
+    if(colgroupOriginal) cloneTable.appendChild(colgroupOriginal.cloneNode(true));
+    cloneTable.appendChild(theadOriginal.cloneNode(true));
+    fixedHeadInner.appendChild(cloneTable);
+  }
+
+  function sincronizarHeaderFijo(){
+    const rect = theadOriginal.getBoundingClientRect();
+    if(rect.top <= 0){
+      const wrapRect = scrollWrap.getBoundingClientRect();
+      fixedHead.style.display = "block";
+      fixedHead.style.left = wrapRect.left + "px";
+      fixedHead.style.width = wrapRect.width + "px";
+      fixedHeadInner.style.transform = "translateX(" + (-scrollWrap.scrollLeft) + "px)";
+    } else {
+      fixedHead.style.display = "none";
+    }
+  }
+
+  construirHeaderFijo();
+  sincronizarHeaderFijo();
+  window.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
+  scrollWrap.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
+  window.addEventListener("resize", ()=>{ construirHeaderFijo(); sincronizarHeaderFijo(); ajustarAlturaCuadrada(); });
+
+  // ---- Cambio de pestaña (Temporada / Septiembre 2026) ----
+  function cambiarVista(nuevaVista){
+    if(nuevaVista === vistaActual) return;
+    vistaActual = nuevaVista;
+    COLUMNAS = VISTAS[vistaActual].columnas;
+    // Los datos de todas las pestañas ya se están escuchando en tiempo real desde el arranque;
+    // si por algún motivo todavía no llegó el primer dato, usamos el inicial como puente.
+    datos = cacheDatosPorVista[vistaActual] || DATOS_INICIALES_POR_VISTA[vistaActual] || {};
+
+    // El deshacer es por pestaña: al cambiar de vista arrancamos su propio historial
+    undoStack.length = 0;
+    actualizarBotonDeshacer();
+
+    document.querySelectorAll(".tab-btn").forEach(b=>{
+      b.classList.toggle("active", b.dataset.vista === nuevaVista);
+    });
+
+    construirHeader();
+    renderTodo();
+    ajustarAlturaCuadrada();
+    requestAnimationFrame(ajustarAlturaCuadrada);
+    construirHeaderFijo();
+    sincronizarHeaderFijo();
+    chequearAvisos();
+    scrollWrap.scrollLeft = 0;
+  }
+
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> cambiarVista(btn.dataset.vista));
+  });
+
+  // ---- Toast simple (mensajes cortos temporales) ----
+  let toastTimer = null;
+  function mostrarToast(msg){
+    const box = document.getElementById("toastBox");
+    box.textContent = msg;
+    box.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ box.style.display = "none"; }, 4000);
+  }
+
+  function isoLocal(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+
+  // ---- Buscador de inquilinos (busca en TODAS las pestañas, no solo la activa) ----
+  function obtenerDatosDeVista(vistaKey){
+    if(vistaKey === vistaActual) return datos;
+    return cacheDatosPorVista[vistaKey] || DATOS_INICIALES_POR_VISTA[vistaKey] || {};
+  }
+
+  function formatColumnaDe(columnasVista, esDiarioVista, idx){
+    const c = columnasVista[idx];
+    if(esDiarioVista) return c.label + " (" + c.rango + ") " + c.turnoTexto;
+    return c.label + " (" + c.rango + ")";
+  }
+
+  function buscarInquilinos(query){
+    const q = query.trim().toLowerCase();
+    if(!q) return [];
+    const resultados = [];
+    Object.keys(VISTAS).forEach(vistaKey=>{
+      const vista = VISTAS[vistaKey];
+      const datosVista = obtenerDatosDeVista(vistaKey);
+      UNIDADES.forEach((u, uIdx)=>{
+        const grupos = agruparGenerico(datosVista, vista.columnas, uIdx);
+        grupos.forEach(g=>{
+          if(g.ocupado && g.nombre && g.nombre.toLowerCase().includes(q)){
+            const rangoTexto = g.fin > g.inicio
+              ? formatColumnaDe(vista.columnas, vista.esDiario, g.inicio) + "  →  " + formatColumnaDe(vista.columnas, vista.esDiario, g.fin)
+              : formatColumnaDe(vista.columnas, vista.esDiario, g.inicio);
+            resultados.push({
+              vistaKey, vistaTitulo: vista.titulo,
+              uIdx, unidadNombre: u.nombre, unidadCodigo: u.codigo,
+              inicio: g.inicio, fin: g.fin, nombre: g.nombre, nota: g.nota, rangoTexto
+            });
+          }
+        });
+      });
+    });
+    return resultados;
+  }
+
+  function renderResultadosBuscar(resultados, query){
+    const cont = document.getElementById("resultadosBuscar");
+    cont.innerHTML = "";
+    if(!query.trim()){
+      cont.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:6px 0;">Escribí un nombre para buscar.</p>';
+      return;
+    }
+    if(resultados.length === 0){
+      cont.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:6px 0;">Sin resultados.</p>';
+      return;
+    }
+    resultados.forEach(r=>{
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--border); border-radius:8px; padding:8px 10px;";
+      const info = document.createElement("div");
+      info.style.cssText = "font-size:12px; line-height:1.4; color:var(--text);";
+      info.innerHTML = "<strong>"+r.nombre+"</strong><br>"+r.unidadNombre+" ("+r.unidadCodigo+") · "+r.vistaTitulo+"<br><span style='color:var(--muted);'>"+r.rangoTexto+"</span>";
+      const btnIr = document.createElement("button");
+      btnIr.textContent = "IR";
+      btnIr.style.cssText = "background:var(--navy); color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0;";
+      btnIr.addEventListener("click", ()=>{
+        dlgBuscar.close();
+        irAResultado(r);
+      });
+      row.appendChild(info);
+      row.appendChild(btnIr);
+      cont.appendChild(row);
+    });
+  }
+
+  function resaltarCelda(td){
+    const slot = td.querySelector(".slot");
+    td.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
+    if(slot){
+      const prevOutline = slot.style.outline;
+      slot.style.outline = "3px solid #fff";
+      slot.style.outlineOffset = "1px";
+      setTimeout(()=>{ slot.style.outline = prevOutline; }, 1600);
+    }
+  }
+
+  function irAResultado(r){
+    const finIr = ()=>{
+      requestAnimationFrame(()=>{
+        const fila = document.querySelectorAll("#bodyTable tr")[r.uIdx];
+        if(!fila) return;
+        const celdas = fila.querySelectorAll("td.cell");
+        const grupos = agruparSemanas(r.uIdx);
+        for(let i=0; i<grupos.length; i++){
+          if(grupos[i].inicio <= r.inicio && r.inicio <= grupos[i].fin){
+            if(celdas[i]) resaltarCelda(celdas[i]);
+            break;
+          }
+        }
+      });
+    };
+    if(r.vistaKey !== vistaActual){
+      cambiarVista(r.vistaKey);
+      setTimeout(finIr, 60);
+    } else {
+      finIr();
+    }
+  }
+
+  const dlgBuscar = document.getElementById("dlgBuscar");
+  const inpBuscar = document.getElementById("inpBuscar");
+
+  document.getElementById("btnBuscar").addEventListener("click", ()=>{
+    inpBuscar.value = "";
+    renderResultadosBuscar([], "");
+    dlgBuscar.showModal();
+    setTimeout(()=> inpBuscar.focus(), 50);
+  });
+  document.getElementById("btnCerrarBuscar").addEventListener("click", ()=> dlgBuscar.close());
+  inpBuscar.addEventListener("input", ()=>{
+    renderResultadosBuscar(buscarInquilinos(inpBuscar.value), inpBuscar.value);
+  });
+
+  // ---- Botón "Hoy": va directo a la fecha de hoy, sin importar en qué pestaña estés ----
+  function columnaContieneFecha(col, esDiarioVista, fechaISO){
+    if(esDiarioVista) return col.inicio === fechaISO;
+    const finSemana = isoLocal(sumarDias(col.inicio, 6));
+    return fechaISO >= col.inicio && fechaISO <= finSemana;
+  }
+
+  function irAHoy(){
+    const hoyStr = isoLocal(new Date());
+    let vistaEncontrada = null;
+    let indiceEncontrado = null;
+
+    for(const vistaKey of Object.keys(VISTAS)){
+      const vista = VISTAS[vistaKey];
+      let ultimoMatch = null;
+      for(let i=0; i<vista.columnas.length; i++){
+        if(columnaContieneFecha(vista.columnas[i], vista.esDiario, hoyStr)){
+          ultimoMatch = i;
+        }
+      }
+      if(ultimoMatch !== null){
+        vistaEncontrada = vistaKey;
+        indiceEncontrado = ultimoMatch;
+        break;
+      }
+    }
+
+    if(!vistaEncontrada){
+      mostrarToast("Hoy no está dentro de ninguno de los calendarios cargados.");
+      return;
+    }
+
+    const irYResaltar = ()=>{
+      requestAnimationFrame(()=>{
+        const fila = document.querySelectorAll("#bodyTable tr")[0];
+        if(!fila) return;
+        const celdas = fila.querySelectorAll("td.cell");
+        const grupos = agruparSemanas(0);
+        for(let i=0; i<grupos.length; i++){
+          if(grupos[i].inicio <= indiceEncontrado && indiceEncontrado <= grupos[i].fin){
+            if(celdas[i]) resaltarCelda(celdas[i]);
+            break;
+          }
+        }
+      });
+    };
+
+    if(vistaEncontrada !== vistaActual){
+      cambiarVista(vistaEncontrada);
+      setTimeout(irYResaltar, 60);
+    } else {
+      irYResaltar();
+    }
+  }
+
+  document.getElementById("btnHoy").addEventListener("click", irAHoy);
+
+  // ---- Exportar a Google Calendar (.ics) ----
+  function pad2(n){ return String(n).padStart(2, "0"); }
+
+  function fechaICSallDay(fechaISO){
+    // fechaISO viene como "YYYY-MM-DD"
+    return fechaISO.replace(/-/g, "");
+  }
+
+  function fechaICSconHora(fechaISO, hora, minuto){
+    const [y,m,d] = fechaISO.split("-");
+    return y + m + d + "T" + pad2(hora) + pad2(minuto) + "00";
+  }
+
+  function escaparICS(txt){
+    return String(txt).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
+  }
+
+  function fechaLegible(iso){
+    const [y,m,d] = iso.split("-");
+    return d + "/" + m + "/" + y;
+  }
+
+  function generarEventosDeVista(vistaKey){
+    const vista = VISTAS[vistaKey];
+    const datosVista = obtenerDatosDeVista(vistaKey);
+    const eventos = [];
+
+    UNIDADES.forEach((u, uIdx)=>{
+      const grupos = agruparGenerico(datosVista, vista.columnas, uIdx);
+      grupos.forEach(g=>{
+        if(!g.ocupado) return;
+        const colIni = vista.columnas[g.inicio];
+        const colFin = vista.columnas[g.fin];
+        let dtStart, dtEnd, allDay, descripcion;
+
+        if(vista.esDiario){
+          // Un solo evento el día de ingreso (14:00), de 1 hora — el rango completo va en la descripción
+          dtStart = fechaICSconHora(colIni.inicio, 14, 0);
+          dtEnd = fechaICSconHora(colIni.inicio, 15, 0);
+          allDay = false;
+          descripcion = "Estadía del " + fechaLegible(colIni.inicio) + " al " + fechaLegible(colFin.inicio) + " (checkout 10:00 hs)";
+        } else {
+          // Un solo día (all-day) en el inicio de la primer semana — el rango completo va en la descripción
+          const finRango = isoLocal(sumarDias(colFin.inicio, 6));
+          dtStart = fechaICSallDay(colIni.inicio);
+          dtEnd = fechaICSallDay(isoLocal(sumarDias(colIni.inicio, 1)));
+          allDay = true;
+          descripcion = "Estadía del " + fechaLegible(colIni.inicio) + " al " + fechaLegible(finRango);
+        }
+
+        if(g.nota) descripcion += " — " + g.nota;
+
+        eventos.push({
+          uid: "bp-" + vistaKey + "-" + uIdx + "-" + g.inicio + "-" + g.fin + "@buenpuerto",
+          titulo: "Ingreso: " + g.nombre + " — " + u.nombre + " (" + u.codigo + ")",
+          descripcion: escaparICS(descripcion),
+          dtStart, dtEnd, allDay
+        });
+      });
+    });
+
+    return eventos;
+  }
+
+  function generarICS(){
+    const ahora = new Date();
+    const dtStamp = ahora.getUTCFullYear()+pad2(ahora.getUTCMonth()+1)+pad2(ahora.getUTCDate())+"T"+pad2(ahora.getUTCHours())+pad2(ahora.getUTCMinutes())+pad2(ahora.getUTCSeconds())+"Z";
+
+    let eventos = [];
+    Object.keys(VISTAS).forEach(vistaKey=>{
+      eventos = eventos.concat(generarEventosDeVista(vistaKey));
+    });
+
+    const lineas = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Condominio Buen Puerto//Calendario//ES",
+      "CALSCALE:GREGORIAN"
+    ];
+
+    eventos.forEach(ev=>{
+      lineas.push("BEGIN:VEVENT");
+      lineas.push("UID:" + ev.uid);
+      lineas.push("DTSTAMP:" + dtStamp);
+      if(ev.allDay){
+        lineas.push("DTSTART;VALUE=DATE:" + ev.dtStart);
+        lineas.push("DTEND;VALUE=DATE:" + ev.dtEnd);
+      } else {
+        lineas.push("DTSTART:" + ev.dtStart);
+        lineas.push("DTEND:" + ev.dtEnd);
+      }
+      lineas.push("SUMMARY:" + escaparICS(ev.titulo));
+      if(ev.descripcion) lineas.push("DESCRIPTION:" + ev.descripcion);
+      // Recordatorio: 1 día antes
+      lineas.push("BEGIN:VALARM");
+      lineas.push("ACTION:DISPLAY");
+      lineas.push("DESCRIPTION:Recordatorio ingreso — " + escaparICS(ev.titulo));
+      lineas.push("TRIGGER:-P1D");
+      lineas.push("END:VALARM");
+      lineas.push("END:VEVENT");
+    });
+
+    lineas.push("END:VCALENDAR");
+    return lineas.join("\r\n");
+  }
+
+  document.getElementById("btnExportarCal").addEventListener("click", ()=>{
+    const contenido = generarICS();
+    const blob = new Blob([contenido], {type: "text/calendar;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "buen-puerto-reservas.ics";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    mostrarToast("Listo — se descargó el archivo. Importalo en Google Calendar (calendar.google.com → Ajustes → Importar).");
+  });
+
+  // Ya se armó la pantalla por primera vez: ahora sí activamos la escucha en vivo
+  // de las 5 pestañas (así el buscador, "Hoy" y la exportación siempre tienen datos frescos,
+  // y cualquier cambio hecho desde OTRO dispositivo se refleja acá solo, sin recargar la página).
+  window.__appIniciada = true;
+  Object.keys(VISTAS).forEach(v=> iniciarListenerVista(v));
+</script>
+</body>
+</html>
