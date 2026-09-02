@@ -205,11 +205,17 @@
         <label for="inpDuracion" id="lblDuracion">Duración (semanas)</label>
         <input id="inpDuracion" type="number" min="1" value="1">
       </div>
-      <div class="duracion-row" id="rangoFechaRow" style="display:none;">
-        <label for="selDesde">Desde</label>
-        <select id="selDesde" disabled></select>
-        <label for="selHasta">Hasta</label>
-        <select id="selHasta"></select>
+      <div class="duracion-row" id="rangoFechaRow" style="display:none; flex-direction:column; align-items:stretch; gap:6px;">
+        <div style="font-size:12px; color:var(--muted);">Desde: <strong id="txtDesde" style="color:var(--text);"></strong></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:12px; color:var(--muted);">Noches</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" id="btnNochesMenos" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:16px;font-weight:700;cursor:pointer;">–</button>
+            <span id="txtNoches" style="min-width:22px;text-align:center;font-size:14px;font-weight:700;">1</span>
+            <button type="button" id="btnNochesMas" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:16px;font-weight:700;cursor:pointer;">+</button>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--muted);">Sale: <strong id="txtSale" style="color:var(--text);"></strong></div>
       </div>
       <div class="color-picker">
         <button type="button" class="color-opcion" data-color="rojo">
@@ -317,6 +323,8 @@
     {nombre:"Puerto Canoa", codigo:"BP 16"},
     {nombre:"Puerto Madryn", codigo:"BP 17"},
     {nombre:"Puerto Iguazú", codigo:"BP 18"},
+    {nombre:"Puerto Quequén", codigo:"BP 19"},
+    {nombre:"Puerto Ciri", codigo:"BP 20"},
   ];
 
   const SEMANAS = [
@@ -333,13 +341,16 @@
   ];
 
   const DIAS_SEMANA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const DIAS_SEMANA_COMPLETO = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const MESES_ABREV = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sept","Oct","Nov","Dic"];
+
   function generarDiasMes(anio, mesIndex0){
     const dias = [];
     const cantidad = new Date(anio, mesIndex0+1, 0).getDate();
     for(let d=1; d<=cantidad; d++){
       const fecha = new Date(anio, mesIndex0, d);
       const iso = fecha.getFullYear()+"-"+String(fecha.getMonth()+1).padStart(2,"0")+"-"+String(fecha.getDate()).padStart(2,"0");
-      dias.push({label:String(d), rango:DIAS_SEMANA[fecha.getDay()], inicio:iso});
+      dias.push({label:String(d), rango:DIAS_SEMANA[fecha.getDay()], diaSemanaCompleto:DIAS_SEMANA_COMPLETO[fecha.getDay()], inicio:iso});
     }
     return dias;
   }
@@ -350,8 +361,8 @@
     const dias = generarDiasMes(anio, mesIndex0);
     const medios = [];
     dias.forEach(d=>{
-      medios.push({label:d.label, rango:d.rango, inicio:d.inicio, turno:"AM", turnoTexto:"mañana (hasta 10:00 / checkout)"});
-      medios.push({label:d.label, rango:d.rango, inicio:d.inicio, turno:"PM", turnoTexto:"tarde (desde 14:00 / checkin)"});
+      medios.push({label:d.label, rango:d.rango, diaSemanaCompleto:d.diaSemanaCompleto, inicio:d.inicio, turno:"AM"});
+      medios.push({label:d.label, rango:d.rango, diaSemanaCompleto:d.diaSemanaCompleto, inicio:d.inicio, turno:"PM"});
     });
     return medios;
   }
@@ -394,9 +405,28 @@
     }
   };
 
-  let vistaActual = "temporada";
+  function detectarVistaDeHoy(){
+    const hoyStr = isoLocal(new Date());
+    const orden = ["sep2026", "oct2026", "nov2026", "dic2026", "temporada"];
+    for(const vistaKey of orden){
+      const vista = VISTAS[vistaKey];
+      for(let i=0; i<vista.columnas.length; i++){
+        if(columnaContieneFecha(vista.columnas[i], vista.esDiario, hoyStr)){
+          return vistaKey;
+        }
+      }
+    }
+    return "temporada"; // si hoy no cae en ningún calendario cargado, arrancamos en Temporada como antes
+  }
+
+  let vistaActual = detectarVistaDeHoy();
   let COLUMNAS = VISTAS[vistaActual].columnas;
   let STORAGE_KEY = VISTAS[vistaActual].storageKey;
+
+  // Marcamos como activa la pestaña que corresponda a hoy (el HTML trae Temporada marcada por defecto)
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.vista === vistaActual);
+  });
 
 
   const DEFAULT_DATA_TEMPORADA = {
@@ -1011,14 +1041,19 @@
       document.documentElement.style.removeProperty("--dia-alto");
       return;
     }
-    const primeraFila = document.querySelector("#bodyTable tr");
-    if(!primeraFila) return;
-    const celdas = primeraFila.querySelectorAll("td.cell");
-    if(celdas.length < 2) return;
+    const mainTable = document.getElementById("mainTable");
+    if(!mainTable) return;
+    const anchoTablaPx = mainTable.getBoundingClientRect().width;
+    if(!anchoTablaPx) return;
 
-    // Medimos el ancho REAL ya renderizado de mañana+tarde del primer día (más confiable que calcularlo)
-    const anchoDiaCompletoPx = celdas[0].getBoundingClientRect().width + celdas[1].getBoundingClientRect().width;
-    if(!anchoDiaCompletoPx){ return; }
+    // No medimos celdas del cuerpo (pueden estar fusionadas si hay una reserva ahí, lo que
+    // rompería el cálculo). En cambio, usamos el mismo % de columna que definimos en el
+    // colgroup — así el resultado no depende de qué haya cargado en ningún casillero.
+    const n = COLUMNAS.length;
+    const unitPercent = 9;
+    const colPercent = (100 - unitPercent) / n;
+    const anchoMediaDiaPx = anchoTablaPx * (colPercent / 100);
+    const anchoDiaCompletoPx = anchoMediaDiaPx * 2;
 
     const paddingVertical = 6; // 3px arriba + 3px abajo (td.cell)
     const altoSlot = Math.max(14, anchoDiaCompletoPx - paddingVertical);
@@ -1174,14 +1209,17 @@
   const inpDuracion = document.getElementById("inpDuracion");
   const duracionRow = document.getElementById("duracionRow");
   const rangoFechaRow = document.getElementById("rangoFechaRow");
-  const selDesde = document.getElementById("selDesde");
-  const selHasta = document.getElementById("selHasta");
+  const txtDesde = document.getElementById("txtDesde");
+  const txtNoches = document.getElementById("txtNoches");
+  const txtSale = document.getElementById("txtSale");
+  const btnNochesMenos = document.getElementById("btnNochesMenos");
+  const btnNochesMas = document.getElementById("btnNochesMas");
   const dlgNormal = document.getElementById("dlgNormal");
   const dlgConfirm = document.getElementById("dlgConfirm");
   const dlgConfirmMsg = document.getElementById("dlgConfirmMsg");
   const btnConfirmSi = document.getElementById("btnConfirmSi");
   const btnConfirmNo = document.getElementById("btnConfirmNo");
-  let dlgU=null, dlgRango=[], dlgColor="rojo";
+  let dlgU=null, dlgRango=[], dlgColor="rojo", dlgNochesActuales=1;
 
   // Panel de confirmación propio (no depende del confirm() nativo del navegador,
   // que en algunos navegadores/apps integradas no funciona)
@@ -1233,7 +1271,9 @@
     function formatColumna(idx){
       const c = COLUMNAS[idx];
       if(VISTAS[vistaActual].esDiario){
-        return c.label + " (" + c.rango + ") " + c.turnoTexto;
+        const [y,m,d] = c.inicio.split("-");
+        const mesAbrev = MESES_ABREV[parseInt(m,10)-1];
+        return c.diaSemanaCompleto + " " + parseInt(d,10) + " " + mesAbrev + " " + y.slice(2);
       }
       return c.label + " (" + c.rango + ")";
     }
@@ -1253,26 +1293,28 @@
       duracionRow.style.display = "none";
       rangoFechaRow.style.display = "flex";
 
-      selDesde.disabled = true;
-      selDesde.innerHTML = '<option>' + formatColumna(inicio) + '</option>';
+      const nochesMax = Math.max(1, Math.floor((COLUMNAS.length - 1 - inicio) / 2));
+      let noches = Math.max(1, Math.round((fin - inicio) / 2)) || 1;
+      if(noches > nochesMax) noches = nochesMax;
 
-      // El checkout (Hasta) siempre es a la mañana: solo ofrecemos índices "mañana" (pares) posteriores al inicio
-      selHasta.innerHTML = "";
-      let primerAM = inicio + 1;
-      if(primerAM % 2 !== 0) primerAM++;
-      for(let k=primerAM; k<COLUMNAS.length; k+=2){
-        const op = document.createElement("option");
-        op.value = k;
-        op.textContent = formatColumna(k);
-        selHasta.appendChild(op);
+      txtDesde.textContent = formatColumna(inicio);
+
+      function actualizarContadorNoches(){
+        txtNoches.textContent = noches;
+        const idxSalida = inicio + noches*2 - 1;
+        txtSale.textContent = formatColumna(Math.min(idxSalida, COLUMNAS.length-1));
+        dlgNochesActuales = noches;
       }
-      // Si la reserva actual ya termina en un valor válido, lo dejamos seleccionado; si no, el más cercano
-      const finAjustado = (fin % 2 === 0 && fin >= primerAM) ? fin : primerAM;
-      if(selHasta.querySelector('option[value="'+finAjustado+'"]')){
-        selHasta.value = finAjustado;
-      } else if(selHasta.options.length){
-        selHasta.value = selHasta.options[0].value;
-      }
+      actualizarContadorNoches();
+
+      btnNochesMenos.onclick = ()=>{
+        if(noches > 1) noches--;
+        actualizarContadorNoches();
+      };
+      btnNochesMas.onclick = ()=>{
+        if(noches < nochesMax) noches++;
+        actualizarContadorNoches();
+      };
     } else {
       duracionRow.style.display = "flex";
       rangoFechaRow.style.display = "none";
@@ -1311,11 +1353,13 @@
       return;
     }
 
-    // Calculamos el rango final: por fecha "Hasta" en la vista diaria, o por duración numérica en la semanal
+    // Calculamos el rango final: por cantidad de noches en la vista diaria, o por duración numérica en la semanal
     let nuevoRango = [];
     if(VISTAS[vistaActual].esDiario){
-      let finElegido = parseInt(selHasta.value, 10);
-      if(isNaN(finElegido) || finElegido < inicio) finElegido = inicio;
+      let noches = parseInt((document.getElementById("txtNoches").textContent || "1").trim(), 10) || 1;
+      if(noches < 1) noches = 1;
+      if(noches > 30) noches = 30; // tope duro de seguridad: nunca más de 30 noches de una carga
+      let finElegido = inicio + noches*2 - 1;
       if(finElegido > COLUMNAS.length-1) finElegido = COLUMNAS.length-1;
       for(let k=inicio; k<=finElegido; k++) nuevoRango.push(k);
     } else {
@@ -1574,7 +1618,11 @@
 
   function formatColumnaDe(columnasVista, esDiarioVista, idx){
     const c = columnasVista[idx];
-    if(esDiarioVista) return c.label + " (" + c.rango + ") " + c.turnoTexto;
+    if(esDiarioVista){
+      const [y,m,d] = c.inicio.split("-");
+      const mesAbrev = MESES_ABREV[parseInt(m,10)-1];
+      return c.diaSemanaCompleto + " " + parseInt(d,10) + " " + mesAbrev + " " + y.slice(2);
+    }
     return c.label + " (" + c.rango + ")";
   }
 
