@@ -1036,11 +1036,7 @@
     mainTable.style.minWidth = (unitMinPx + n*colMinPx) + "px";
   }
 
-  function ajustarAlturaCuadrada(){
-    if(!VISTAS[vistaActual].esDiario){
-      document.documentElement.style.removeProperty("--dia-alto");
-      return;
-    }
+  function calcularYAplicarAlturaCuadrada(){
     const mainTable = document.getElementById("mainTable");
     if(!mainTable) return;
     const anchoTablaPx = mainTable.getBoundingClientRect().width;
@@ -1056,8 +1052,25 @@
     const anchoDiaCompletoPx = anchoMediaDiaPx * 2;
 
     const paddingVertical = 6; // 3px arriba + 3px abajo (td.cell)
-    const altoSlot = Math.max(14, anchoDiaCompletoPx - paddingVertical);
+    let altoSlot = anchoDiaCompletoPx - paddingVertical;
+    // Tope de seguridad: un casillero de día jamás debería medir esto en ningún dispositivo real.
+    // Si el cálculo da un número absurdo (por lo que sea), lo recortamos a un valor razonable
+    // en vez de aplicar un tamaño roto.
+    if(!isFinite(altoSlot) || altoSlot < 14) altoSlot = 14;
+    if(altoSlot > 70) altoSlot = 70;
     document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
+  }
+
+  function ajustarAlturaCuadrada(){
+    if(!VISTAS[vistaActual].esDiario){
+      document.documentElement.style.removeProperty("--dia-alto");
+      return;
+    }
+    // Esperamos a que el navegador termine de acomodar el layout antes de medir
+    // (en el celu a veces el primer cálculo se hace antes de que la tabla se asiente del todo).
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(calcularYAplicarAlturaCuadrada);
+    });
   }
 
   function construirHeader(){
