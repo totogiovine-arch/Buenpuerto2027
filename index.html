@@ -1352,22 +1352,31 @@
     });
 
     let msg, labelSi;
+    const finElegidoReal = nuevoRango[nuevoRango.length-1];
+    const cantidadNoches = esDiarioMsg ? Math.round((finElegidoReal - inicio) / 2) : null;
+    const esNochesInusuales = esDiarioMsg && cantidadNoches !== null && cantidadNoches >= 10;
+    const rangoFechasTexto = esDiarioMsg
+      ? (esNochesInusuales
+          ? " ⚠️ OJO: son " + cantidadNoches + " noches — del " + fechaLegible(COLUMNAS[inicio].inicio) + " al " + fechaLegible(COLUMNAS[finElegidoReal].inicio) + ". Si no era esa la fecha, tocá \"No, volver\" y revisá el campo Hasta."
+          : " Del " + fechaLegible(COLUMNAS[inicio].inicio) + " al " + fechaLegible(COLUMNAS[finElegidoReal].inicio) + ".")
+      : "";
+
     if(conflictos.length > 0){
       const nombresConflicto = [...new Set(conflictos.map(sIdx=> (datos[key(dlgU,sIdx)]||{}).nombre || "(sin nombre)"))].join(", ");
       msg = esDiarioMsg
-        ? "Ojo: vas a pisar la reserva de \"" + nombresConflicto + "\" en este tramo. ¿Confirmás?"
+        ? "Ojo: vas a pisar la reserva de \"" + nombresConflicto + "\" en este tramo." + rangoFechasTexto + " ¿Confirmás?"
         : "Ojo: vas a pisar la reserva de \"" + nombresConflicto + "\" en " + conflictos.length + " " + unidadTiempoPlural + ". ¿Confirmás?";
       labelSi = "Sí, pisar reserva";
     } else if(habiaAlgoAntes){
       msg = esDiarioMsg
-        ? "¿Confirmás modificar esta reserva?"
+        ? "¿Confirmás modificar esta reserva?" + rangoFechasTexto
         : (nuevoRango.length > 1
           ? "¿Confirmás modificar esta reserva en estas " + nuevoRango.length + " " + unidadTiempoPlural + "?"
           : "¿Confirmás modificar esta reserva?");
       labelSi = "Sí, modificar";
     } else {
       msg = esDiarioMsg
-        ? "¿Confirmás cargar esta reserva?"
+        ? "¿Confirmás cargar esta reserva?" + rangoFechasTexto
         : (nuevoRango.length > 1
           ? "¿Confirmás cargar esta reserva para " + nuevoRango.length + " " + unidadTiempoPlural + "?"
           : "¿Confirmás cargar esta reserva?");
@@ -1411,6 +1420,25 @@
   function ingresosDeManana(){
     const hoy = hoyISO();
     const resultado = [];
+
+    if(VISTAS[vistaActual].esDiario){
+      // Usamos los bloques ya agrupados (una reserva = un bloque), y nos fijamos si el
+      // PRIMER día de ese bloque (el check-in real) es mañana — así no se duplica entre
+      // la mitad de mañana/tarde ni se confunde con días intermedios de una estadía larga.
+      UNIDADES.forEach((u, uIdx)=>{
+        const grupos = agruparGenerico(datos, COLUMNAS, uIdx);
+        grupos.forEach(g=>{
+          if(!g.ocupado) return;
+          const fechaInicio = COLUMNAS[g.inicio].inicio;
+          const diaAntes = sumarDias(fechaInicio, -1);
+          if(mismodia(hoy, diaAntes)){
+            resultado.push({unidad:u.nombre, codigo:u.codigo, nombre:g.nombre || "(sin nombre cargado)"});
+          }
+        });
+      });
+      return resultado;
+    }
+
     COLUMNAS.forEach((s, sIdx)=>{
       const diaAntes = sumarDias(s.inicio, -1);
       if(mismodia(hoy, diaAntes)){
