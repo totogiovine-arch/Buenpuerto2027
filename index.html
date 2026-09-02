@@ -145,6 +145,18 @@
   .swatch-amarillo{background:var(--color-amarillo);}
   .color-swatch.selected{border-color:var(--navy); box-shadow:0 0 0 2px #fff inset;}
 
+  /* Solo en pantallas de celu: columna de unidades un poco más ancha y nombre en 2 líneas
+     en vez de cortado con "...". No afecta a la notebook/desktop. */
+  @media (max-width: 600px){
+    #mainTable colgroup col:first-child{ width:112px !important; }
+    .unit-name{
+      white-space:normal !important;
+      overflow:visible !important;
+      text-overflow:clip !important;
+      line-height:1.2;
+    }
+  }
+
   .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;}
   .dlg-actions button{
     flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;
