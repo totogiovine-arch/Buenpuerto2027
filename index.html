@@ -456,6 +456,10 @@
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.classList.toggle("active", b.dataset.vista === vistaActual);
   });
+  {
+    const tabInicial = document.querySelector('#tabBar .tab-btn[data-vista="'+vistaActual+'"]');
+    if(tabInicial && typeof tabInicial.scrollIntoView === "function") tabInicial.scrollIntoView({inline:"center", block:"nearest"});
+  }
 
 
   const DEFAULT_DATA_TEMPORADA = {
@@ -1623,6 +1627,15 @@
     document.querySelectorAll(".tab-btn").forEach(b=>{
       b.classList.toggle("active", b.dataset.vista === nuevaVista);
     });
+
+    // Acompañamos el cambio: la pestaña activa se desplaza sola a la vista dentro de la barra de arriba
+    // (importante en el celu, donde la barra tiene scroll propio y si no, queda "atrás").
+    const tabActivo = document.querySelector('#tabBar .tab-btn[data-vista="'+nuevaVista+'"]');
+    if(tabActivo){
+      if(typeof tabActivo.scrollIntoView === "function"){
+        tabActivo.scrollIntoView({behavior:"smooth", inline:"center", block:"nearest"});
+      }
+    }
 
     construirHeader();
     renderTodo();
