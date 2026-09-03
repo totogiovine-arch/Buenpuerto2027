@@ -160,10 +160,8 @@
     .solo-desktop{ display:none !important; }
   }
 
-  /* Solo en notebook/desktop: dejamos lugar abajo para la barrita mini de meses */
-  @media (min-width: 601px){
-    html,body{ padding-bottom:34px; }
-  }
+  /* Dejamos lugar abajo para la barrita de meses (ahora visible en celu y notebook) */
+  html,body{ padding-bottom:40px; }
 
   .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;}
   .dlg-actions button{
@@ -182,11 +180,12 @@
     <button class="tab-btn" data-vista="oct2026" id="tabOct2026">Oct 26</button>
     <button class="tab-btn" data-vista="nov2026" id="tabNov2026">Nov 26</button>
     <button class="tab-btn" data-vista="dic2026" id="tabDic2026">Dic 26</button>
-    <button class="tab-btn active" data-vista="temporada" id="tabTemporada">Temporada 27</button>
+    <button class="tab-btn active" data-vista="temporada" id="tabTemporada">Temp 27</button>
   </div>
   <div style="display:flex; align-items:center; gap:6px; padding:0 12px; flex-shrink:0;">
     <button id="btnBuscar" title="Buscar inquilino" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">🔍</button>
     <button id="btnExportarCal" title="Exportar a Google Calendar" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">📅</button>
+    <button id="btnDeshacer" title="Deshacer último cambio (Ctrl+Z)" style="display:none; background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:16px; cursor:pointer; color:#fff;">↺</button>
     <button id="btnPantallaCompleta" class="solo-desktop" title="Pantalla completa" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:14px; cursor:pointer; color:#fff;">⛶</button>
     <button id="btnHoy" title="Ir a hoy" style="background:var(--gold); border:none; border-radius:16px; padding:8px 12px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--navy-dark); white-space:nowrap;">Hoy</button>
   </div>
@@ -195,8 +194,6 @@
 <div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
 
 <div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
-
-<button id="btnDeshacer" title="Deshacer último cambio (Ctrl+Z)" style="display:none; position:fixed; bottom:18px; right:18px; z-index:60; background:var(--navy); color:#fff; border:none; border-radius:24px; padding:10px 16px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,.25); cursor:pointer;">↩️ Deshacer</button>
 
 <div id="fixedHead" style="display:none; position:fixed; top:0; left:0; right:0; overflow:hidden; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.15);">
   <div id="fixedHeadInner"></div>
@@ -213,7 +210,7 @@
 
 <footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
-<div id="barraMesesAbajo" class="solo-desktop" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px;">
+<div id="barraMesesAbajo" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px; flex-wrap:wrap;">
   <button class="tab-btn tab-btn-mini" data-vista="sep2026">Sept</button>
   <button class="tab-btn tab-btn-mini" data-vista="oct2026">Oct</button>
   <button class="tab-btn tab-btn-mini" data-vista="nov2026">Nov</button>
@@ -1662,45 +1659,6 @@
   document.querySelectorAll(".tab-btn").forEach(btn=>{
     btn.addEventListener("click", ()=> cambiarVista(btn.dataset.vista));
   });
-
-  // ---- Cambiar de mes deslizando con el dedo (solo celu/táctil), únicamente cuando
-  // ya se llegó al primer o último día visible del mes actual ----
-  const ORDEN_VISTAS = ["sep2026", "oct2026", "nov2026", "dic2026", "temporada"];
-
-  function irMesSiguiente(){
-    const idx = ORDEN_VISTAS.indexOf(vistaActual);
-    if(idx >= 0 && idx < ORDEN_VISTAS.length-1) cambiarVista(ORDEN_VISTAS[idx+1], "inicio");
-  }
-  function irMesAnterior(){
-    const idx = ORDEN_VISTAS.indexOf(vistaActual);
-    if(idx > 0) cambiarVista(ORDEN_VISTAS[idx-1], "fin");
-  }
-
-  let toqueInicioX = null;
-  let toqueEnBordeInicio = false;
-  let toqueEnBordeFin = false;
-
-  scrollWrap.addEventListener("touchstart", (e)=>{
-    if(e.touches.length !== 1) return;
-    toqueInicioX = e.touches[0].clientX;
-    const margen = 4;
-    toqueEnBordeInicio = scrollWrap.scrollLeft <= margen;
-    toqueEnBordeFin = (scrollWrap.scrollLeft + scrollWrap.clientWidth) >= (scrollWrap.scrollWidth - margen);
-  }, {passive:true});
-
-  scrollWrap.addEventListener("touchend", (e)=>{
-    if(toqueInicioX === null) return;
-    const toqueFinX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : toqueInicioX;
-    const deltaX = toqueFinX - toqueInicioX;
-    const UMBRAL = 55; // píxeles mínimos de deslizamiento para que cuente como "cambiar de mes"
-
-    if(toqueEnBordeFin && deltaX <= -UMBRAL){
-      irMesSiguiente();
-    } else if(toqueEnBordeInicio && deltaX >= UMBRAL){
-      irMesAnterior();
-    }
-    toqueInicioX = null;
-  }, {passive:true});
 
   // ---- Toast simple (mensajes cortos temporales) ----
   let toastTimer = null;
