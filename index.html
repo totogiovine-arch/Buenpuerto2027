@@ -20,6 +20,7 @@
     /* paleta oscura, solo para el área del calendario (no para el diálogo) */
     --cal-bg:#101c34;
     --cal-bg-alt:#233457;
+    --cal-finde:#2a3f6b;
     --cal-border:rgba(255,255,255,.08);
     --cal-text-muted:#94a3c2;
     --cal-dash:rgba(255,255,255,.28);
@@ -82,6 +83,8 @@
   td.cell.media-am{border-right:none;}
   tbody tr:nth-child(odd) td.cell{background:var(--cal-bg);}
   tbody tr:nth-child(even) td.cell{background:var(--cal-bg-alt);}
+  tbody tr td.cell.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
+  thead th.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
 
   .slot{
     height:var(--dia-alto);
@@ -1121,6 +1124,9 @@
         const th = document.createElement("th");
         th.colSpan = 2;
         th.innerHTML = s.label + '<span class="rango">'+s.rango+'</span>';
+        if(s.rango === "Vie" || s.rango === "Dom"){
+          th.classList.add("finde");
+        }
         headRow.appendChild(th);
       }
     } else {
@@ -1198,10 +1204,19 @@
       const td = document.createElement("td");
       td.className = "cell";
       if(g.fin > g.inicio) td.colSpan = (g.fin - g.inicio + 1);
-      // En vistas diarias, si la celda es la mitad "mañana" (índice par) le sacamos el borde
-      // derecho, así solo queda la línea entre un día y el siguiente (no entre mañana/tarde).
-      if(VISTAS[vistaActual].esDiario && g.inicio % 2 === 0){
+      // Si la celda TERMINA en la mitad "mañana" (índice par) le sacamos el borde derecho —
+      // así no se ve ninguna línea "cortando" un día a la mitad, sea un casillero vacío o el
+      // final de una reserva que hace checkout a la mañana.
+      if(VISTAS[vistaActual].esDiario && g.fin % 2 === 0){
         td.classList.add("media-am");
+      }
+      // Línea gruesa solo al INICIO del finde (viernes, borde con el sábado) y al FINAL (domingo,
+      // borde con el lunes) — la línea entre sábado y domingo queda igual que las demás.
+      if(VISTAS[vistaActual].esDiario){
+        const rangoDia = COLUMNAS[g.fin].rango;
+        if(rangoDia === "Vie" || rangoDia === "Dom"){
+          td.classList.add("finde");
+        }
       }
 
       const slot = document.createElement("div");
@@ -1582,7 +1597,7 @@
   const fixedHeadInner = document.getElementById("fixedHeadInner");
   const theadOriginal = mainTable.querySelector("thead");
 
-  function construirHeaderFijo(){
+  function construirHeaderFijoAhora(){
     fixedHeadInner.innerHTML = "";
     const cloneTable = document.createElement("table");
     cloneTable.style.width = mainTable.offsetWidth + "px";
@@ -1591,6 +1606,16 @@
     if(colgroupOriginal) cloneTable.appendChild(colgroupOriginal.cloneNode(true));
     cloneTable.appendChild(theadOriginal.cloneNode(true));
     fixedHeadInner.appendChild(cloneTable);
+    sincronizarHeaderFijo();
+  }
+
+  function construirHeaderFijo(){
+    // Esperamos a que el navegador termine de acomodar el nuevo layout (sobre todo al
+    // cambiar de mes, donde el ancho de la tabla puede cambiar bastante) antes de medir
+    // y clonar el encabezado — si no, el clon puede quedar con un ancho viejo y desalineado.
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(construirHeaderFijoAhora);
+    });
   }
 
   function sincronizarHeaderFijo(){
