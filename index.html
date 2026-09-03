@@ -457,8 +457,12 @@
     b.classList.toggle("active", b.dataset.vista === vistaActual);
   });
   {
-    const tabInicial = document.querySelector('#tabBar .tab-btn[data-vista="'+vistaActual+'"]');
-    if(tabInicial && typeof tabInicial.scrollIntoView === "function") tabInicial.scrollIntoView({inline:"center", block:"nearest"});
+    try{
+      const tabInicial = document.querySelector('#tabBar .tab-btn[data-vista="'+vistaActual+'"]');
+      if(tabInicial && typeof tabInicial.scrollIntoView === "function") tabInicial.scrollIntoView({inline:"center", block:"nearest"});
+    }catch(e){
+      console.error("No se pudo desplazar la pestaña inicial a la vista:", e);
+    }
   }
 
 
@@ -1628,15 +1632,6 @@
       b.classList.toggle("active", b.dataset.vista === nuevaVista);
     });
 
-    // Acompañamos el cambio: la pestaña activa se desplaza sola a la vista dentro de la barra de arriba
-    // (importante en el celu, donde la barra tiene scroll propio y si no, queda "atrás").
-    const tabActivo = document.querySelector('#tabBar .tab-btn[data-vista="'+nuevaVista+'"]');
-    if(tabActivo){
-      if(typeof tabActivo.scrollIntoView === "function"){
-        tabActivo.scrollIntoView({behavior:"smooth", inline:"center", block:"nearest"});
-      }
-    }
-
     construirHeader();
     renderTodo();
     ajustarAlturaCuadrada();
@@ -1649,6 +1644,18 @@
       requestAnimationFrame(()=>{ scrollWrap.scrollLeft = scrollWrap.scrollWidth; });
     } else {
       scrollWrap.scrollLeft = 0;
+    }
+
+    // Acompañamos el cambio: la pestaña activa se desplaza sola a la vista dentro de la barra
+    // de arriba (importante en el celu). Va al final y blindado: si esto llegara a fallar en
+    // algún navegador, nunca debe impedir que el cambio de mes ya hecho arriba funcione.
+    try{
+      const tabActivo = document.querySelector('#tabBar .tab-btn[data-vista="'+nuevaVista+'"]');
+      if(tabActivo && typeof tabActivo.scrollIntoView === "function"){
+        tabActivo.scrollIntoView({inline:"center", block:"nearest"});
+      }
+    }catch(e){
+      console.error("No se pudo desplazar la pestaña activa a la vista:", e);
     }
   }
 
