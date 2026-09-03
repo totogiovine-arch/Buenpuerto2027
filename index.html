@@ -26,7 +26,7 @@
     --dia-alto:30px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0 0 46px 0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
+  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
 
   .tab-btn{
     background:#1f3157;border:none;border-radius:20px;
@@ -145,6 +145,8 @@
   .swatch-amarillo{background:var(--color-amarillo);}
   .color-swatch.selected{border-color:var(--navy); box-shadow:0 0 0 2px #fff inset;}
 
+  .tab-btn-mini{ padding:5px 10px !important; font-size:10px !important; border-radius:12px !important; }
+
   /* Solo en pantallas de celu: columna de unidades un poco más ancha y nombre en 2 líneas
      en vez de cortado con "...". No afecta a la notebook/desktop. */
   @media (max-width: 600px){
@@ -155,6 +157,12 @@
       text-overflow:clip !important;
       line-height:1.2;
     }
+    .solo-desktop{ display:none !important; }
+  }
+
+  /* Solo en notebook/desktop: dejamos lugar abajo para la barrita mini de meses */
+  @media (min-width: 601px){
+    html,body{ padding-bottom:34px; }
   }
 
   .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;}
@@ -179,6 +187,7 @@
   <div style="display:flex; align-items:center; gap:6px; padding:0 12px; flex-shrink:0;">
     <button id="btnBuscar" title="Buscar inquilino" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">🔍</button>
     <button id="btnExportarCal" title="Exportar a Google Calendar" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:15px; cursor:pointer; color:#fff;">📅</button>
+    <button id="btnPantallaCompleta" class="solo-desktop" title="Pantalla completa" style="background:#1f3157; border:none; border-radius:50%; width:34px; height:34px; font-size:14px; cursor:pointer; color:#fff;">⛶</button>
     <button id="btnHoy" title="Ir a hoy" style="background:var(--gold); border:none; border-radius:16px; padding:8px 12px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--navy-dark); white-space:nowrap;">Hoy</button>
   </div>
 </div>
@@ -204,10 +213,12 @@
 
 <footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
-<div id="barraMeses" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; align-items:center; justify-content:space-between; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:8px 14px;">
-  <button id="btnMesAnterior" style="background:#1f3157; color:#fff; border:none; border-radius:16px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer;">‹</button>
-  <span id="txtMesActual" style="color:#fff; font-size:12px; font-weight:600;"></span>
-  <button id="btnMesSiguiente" style="background:#1f3157; color:#fff; border:none; border-radius:16px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer;">›</button>
+<div id="barraMesesAbajo" class="solo-desktop" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px;">
+  <button class="tab-btn tab-btn-mini" data-vista="sep2026">Sept</button>
+  <button class="tab-btn tab-btn-mini" data-vista="oct2026">Oct</button>
+  <button class="tab-btn tab-btn-mini" data-vista="nov2026">Nov</button>
+  <button class="tab-btn tab-btn-mini" data-vista="dic2026">Dic</button>
+  <button class="tab-btn tab-btn-mini" data-vista="temporada">Temp.</button>
 </div>
 
 <dialog id="dlg">
@@ -1597,15 +1608,6 @@
   window.addEventListener("resize", ()=>{ construirHeaderFijo(); sincronizarHeaderFijo(); ajustarAlturaCuadrada(); });
 
   // ---- Cambio de pestaña (Temporada / Septiembre 2026) ----
-  const ORDEN_VISTAS = ["sep2026", "oct2026", "nov2026", "dic2026", "temporada"];
-
-  function actualizarTxtMesActual(){
-    const btnActivo = document.querySelector('.tab-btn[data-vista="'+vistaActual+'"]');
-    document.getElementById("txtMesActual").textContent = btnActivo ? btnActivo.textContent : "";
-    document.getElementById("btnMesAnterior").style.visibility = (ORDEN_VISTAS.indexOf(vistaActual) <= 0) ? "hidden" : "visible";
-    document.getElementById("btnMesSiguiente").style.visibility = (ORDEN_VISTAS.indexOf(vistaActual) >= ORDEN_VISTAS.length-1) ? "hidden" : "visible";
-  }
-
   function cambiarVista(nuevaVista, posicionScroll){
     if(nuevaVista === vistaActual) return;
     vistaActual = nuevaVista;
@@ -1629,55 +1631,56 @@
     construirHeaderFijo();
     sincronizarHeaderFijo();
     chequearAvisos();
-    actualizarTxtMesActual();
 
-    bloqueadoAutoAvance = true;
     if(posicionScroll === "fin"){
       requestAnimationFrame(()=>{ scrollWrap.scrollLeft = scrollWrap.scrollWidth; });
     } else {
       scrollWrap.scrollLeft = 0;
     }
-    setTimeout(()=>{ bloqueadoAutoAvance = false; }, 400);
   }
 
   document.querySelectorAll(".tab-btn").forEach(btn=>{
     btn.addEventListener("click", ()=> cambiarVista(btn.dataset.vista));
   });
 
-  // ---- Navegación de mes con flechas y avance automático al llegar al borde del scroll ----
-  let bloqueadoAutoAvance = false;
+  // ---- Cambiar de mes deslizando con el dedo (solo celu/táctil), únicamente cuando
+  // ya se llegó al primer o último día visible del mes actual ----
+  const ORDEN_VISTAS = ["sep2026", "oct2026", "nov2026", "dic2026", "temporada"];
 
   function irMesSiguiente(){
     const idx = ORDEN_VISTAS.indexOf(vistaActual);
-    if(idx >= 0 && idx < ORDEN_VISTAS.length-1){
-      cambiarVista(ORDEN_VISTAS[idx+1], "inicio");
-    }
+    if(idx >= 0 && idx < ORDEN_VISTAS.length-1) cambiarVista(ORDEN_VISTAS[idx+1], "inicio");
   }
   function irMesAnterior(){
     const idx = ORDEN_VISTAS.indexOf(vistaActual);
-    if(idx > 0){
-      cambiarVista(ORDEN_VISTAS[idx-1], "fin");
-    }
+    if(idx > 0) cambiarVista(ORDEN_VISTAS[idx-1], "fin");
   }
 
-  document.getElementById("btnMesSiguiente").addEventListener("click", irMesSiguiente);
-  document.getElementById("btnMesAnterior").addEventListener("click", irMesAnterior);
+  let toqueInicioX = null;
+  let toqueEnBordeInicio = false;
+  let toqueEnBordeFin = false;
 
-  scrollWrap.addEventListener("scroll", ()=>{
-    if(bloqueadoAutoAvance) return;
-    const margen = 8;
-    if(scrollWrap.scrollLeft + scrollWrap.clientWidth >= scrollWrap.scrollWidth - margen){
-      irMesSiguiente();
-    } else if(scrollWrap.scrollLeft <= margen){
-      // Evitamos disparar esto en la carga inicial (scrollLeft arranca en 0 igual)
-      if(scrollWrap.dataset.yaScrolleo === "1"){
-        irMesAnterior();
-      }
-    }
-    scrollWrap.dataset.yaScrolleo = "1";
+  scrollWrap.addEventListener("touchstart", (e)=>{
+    if(e.touches.length !== 1) return;
+    toqueInicioX = e.touches[0].clientX;
+    const margen = 4;
+    toqueEnBordeInicio = scrollWrap.scrollLeft <= margen;
+    toqueEnBordeFin = (scrollWrap.scrollLeft + scrollWrap.clientWidth) >= (scrollWrap.scrollWidth - margen);
   }, {passive:true});
 
-  actualizarTxtMesActual();
+  scrollWrap.addEventListener("touchend", (e)=>{
+    if(toqueInicioX === null) return;
+    const toqueFinX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : toqueInicioX;
+    const deltaX = toqueFinX - toqueInicioX;
+    const UMBRAL = 55; // píxeles mínimos de deslizamiento para que cuente como "cambiar de mes"
+
+    if(toqueEnBordeFin && deltaX <= -UMBRAL){
+      irMesSiguiente();
+    } else if(toqueEnBordeInicio && deltaX >= UMBRAL){
+      irMesAnterior();
+    }
+    toqueInicioX = null;
+  }, {passive:true});
 
   // ---- Toast simple (mensajes cortos temporales) ----
   let toastTimer = null;
@@ -1869,6 +1872,19 @@
   }
 
   document.getElementById("btnHoy").addEventListener("click", irAHoy);
+
+  // ---- Pantalla completa (solo notebook/desktop; en el celu el botón ni se muestra) ----
+  document.getElementById("btnPantallaCompleta").addEventListener("click", ()=>{
+    const el = document.documentElement;
+    const enPantallaCompleta = document.fullscreenElement || document.webkitFullscreenElement;
+    if(!enPantallaCompleta){
+      if(el.requestFullscreen) el.requestFullscreen();
+      else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } else {
+      if(document.exitFullscreen) document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  });
 
   // ---- Exportar a Google Calendar (.ics) ----
   function pad2(n){ return String(n).padStart(2, "0"); }
