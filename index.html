@@ -108,9 +108,6 @@
   .slot.violeta{background:var(--color-violeta); border:none;}
   .slot.amarillo{background:var(--color-amarillo); border:none; color:var(--navy);}
 
-  #fixedHeadInner table{border-collapse:separate;border-spacing:0;table-layout:fixed;}
-  #fixedHeadInner thead th{position:static !important;}
-
   footer{
     background:var(--navy-dark);
     padding:10px 16px;
@@ -198,10 +195,6 @@
 <div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
 
 <div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
-
-<div id="fixedHead" style="display:none; position:fixed; top:0; left:0; right:0; overflow:hidden; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.15);">
-  <div id="fixedHeadInner"></div>
-</div>
 
 <div class="scroll-wrap" id="scrollWrap">
   <table id="mainTable">
@@ -1608,60 +1601,12 @@
   actualizarEstadoBoton();
   chequearAvisos();
 
-  // ---- Header de semanas "congelado" con JS (más confiable que el sticky nativo) ----
+  // El encabezado de semanas queda fijo con "position:sticky" nativo del navegador (ya
+  // configurado en el CSS de thead th). Al ser la MISMA tabla (no una copia aparte), no
+  // puede desalinearse nunca con las columnas del cuerpo.
   const scrollWrap = document.getElementById("scrollWrap");
   const mainTable = document.getElementById("mainTable");
-  const fixedHead = document.getElementById("fixedHead");
-  const fixedHeadInner = document.getElementById("fixedHeadInner");
-  const theadOriginal = mainTable.querySelector("thead");
-
-  function reconstruirClonHeader(){
-    fixedHeadInner.innerHTML = "";
-    const cloneTable = document.createElement("table");
-    const anchoReal = mainTable.offsetWidth + "px";
-    cloneTable.style.width = anchoReal;
-    cloneTable.style.minWidth = anchoReal;
-    const colgroupOriginal = mainTable.querySelector("colgroup");
-    if(colgroupOriginal) cloneTable.appendChild(colgroupOriginal.cloneNode(true));
-    cloneTable.appendChild(theadOriginal.cloneNode(true));
-    fixedHeadInner.appendChild(cloneTable);
-  }
-
-  function construirHeaderFijo(){
-    // Esperamos a que el navegador termine de acomodar el nuevo layout (sobre todo al
-    // cambiar de mes, donde el ancho de la tabla puede cambiar bastante) antes de medir
-    // y clonar el encabezado — si no, el clon puede quedar con un ancho viejo y desalineado.
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(()=>{
-        reconstruirClonHeader();
-        sincronizarHeaderFijo();
-      });
-    });
-  }
-
-  function sincronizarHeaderFijo(){
-    const rect = theadOriginal.getBoundingClientRect();
-    if(rect.top <= 0){
-      // Reconstruimos el clon COMPLETO en cada sincronización (no solo el ancho): así nunca
-      // puede quedar desalineado con la tabla real, sea cual sea la causa del desfasaje en el
-      // celu (barra de Safari, redondeos, lo que sea) — siempre refleja el estado actual.
-      reconstruirClonHeader();
-
-      const wrapRect = scrollWrap.getBoundingClientRect();
-      fixedHead.style.display = "block";
-      fixedHead.style.left = wrapRect.left + "px";
-      fixedHead.style.width = wrapRect.width + "px";
-      fixedHeadInner.style.transform = "translateX(" + (-scrollWrap.scrollLeft) + "px)";
-    } else {
-      fixedHead.style.display = "none";
-    }
-  }
-
-  construirHeaderFijo();
-  sincronizarHeaderFijo();
-  window.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
-  scrollWrap.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
-  window.addEventListener("resize", ()=>{ construirHeaderFijo(); sincronizarHeaderFijo(); ajustarAlturaCuadrada(); });
+  window.addEventListener("resize", ()=>{ ajustarAlturaCuadrada(); });
 
   // ---- Cambio de pestaña (Temporada / Septiembre 2026) ----
   function cambiarVista(nuevaVista, posicionScroll){
@@ -1684,8 +1629,6 @@
     renderTodo();
     ajustarAlturaCuadrada();
     requestAnimationFrame(ajustarAlturaCuadrada);
-    construirHeaderFijo();
-    sincronizarHeaderFijo();
     chequearAvisos();
 
     if(posicionScroll === "fin"){
