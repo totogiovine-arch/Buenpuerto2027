@@ -58,6 +58,7 @@
     font-size:10.5px;
     font-weight:700;
     letter-spacing:.3px;
+    border-right:2px solid var(--gold);
     position:sticky;left:0;top:0;z-index:20;
   }
 
@@ -229,6 +230,7 @@
   <div id="dlgNormal">
     <div class="dlg-body">
       <input id="inpNombre" type="text" placeholder="Nombre inquilino">
+      <div id="avisoNombre" style="display:none; color:var(--confirmado); font-size:11.5px; margin-top:-4px; font-weight:600;">Falta ingresar el nombre.</div>
       <input id="inpNota" type="text" placeholder="Nota (opcional)">
       <div class="duracion-row" id="duracionRow">
         <label for="inpDuracion" id="lblDuracion">Duración (semanas)</label>
@@ -1267,6 +1269,9 @@
   const dlgTitle = document.getElementById("dlgTitle");
   const dlgSub = document.getElementById("dlgSub");
   const inpNombre = document.getElementById("inpNombre");
+  inpNombre.addEventListener("input", ()=>{
+    if(inpNombre.value.trim()) document.getElementById("avisoNombre").style.display = "none";
+  });
   const inpNota = document.getElementById("inpNota");
   const inpDuracion = document.getElementById("inpDuracion");
   const duracionRow = document.getElementById("duracionRow");
@@ -1327,6 +1332,7 @@
     dlgU = uIdx; dlgRango = rango;
     dlgConfirm.style.display = "none";
     dlgNormal.style.display = "";
+    document.getElementById("avisoNombre").style.display = "none";
     const u = UNIDADES[uIdx];
     const inicio = rango[0], fin = rango[rango.length-1];
     dlgTitle.textContent = u.nombre + " · " + u.codigo;
@@ -1406,6 +1412,18 @@
     const unidadTiempoPlural = "semanas";
 
     if(quedaVacio){
+      const habiaAlgoAntes = dlgRango.some(sIdx=>{
+        const d = datos[key(dlgU,sIdx)];
+        return d && (d.nombre || d.nota);
+      });
+
+      if(!habiaAlgoAntes){
+        // No había ninguna reserva acá: no es un borrado, simplemente falta el nombre.
+        document.getElementById("avisoNombre").style.display = "block";
+        inpNombre.focus();
+        return;
+      }
+
       const msg = esDiarioMsg
         ? "Esto va a borrar la reserva cargada en este tramo. ¿Confirmás?"
         : (dlgRango.length > 1
@@ -1626,6 +1644,18 @@
       fixedHead.style.left = wrapRect.left + "px";
       fixedHead.style.width = wrapRect.width + "px";
       fixedHeadInner.style.transform = "translateX(" + (-scrollWrap.scrollLeft) + "px)";
+
+      // Reajustamos el ancho del clon en cada sincronización (no solo al reconstruirlo): en el
+      // celu, Safari a veces achica/agranda su propia barra al scrollear, lo que cambia el ancho
+      // real disponible — sin esto, el clon queda con una medida vieja y se desalinea.
+      const cloneTable = fixedHeadInner.querySelector("table");
+      if(cloneTable){
+        const anchoReal = mainTable.offsetWidth + "px";
+        if(cloneTable.style.width !== anchoReal){
+          cloneTable.style.width = anchoReal;
+          cloneTable.style.minWidth = anchoReal;
+        }
+      }
     } else {
       fixedHead.style.display = "none";
     }
