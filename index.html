@@ -1615,16 +1615,16 @@
   const fixedHeadInner = document.getElementById("fixedHeadInner");
   const theadOriginal = mainTable.querySelector("thead");
 
-  function construirHeaderFijoAhora(){
+  function reconstruirClonHeader(){
     fixedHeadInner.innerHTML = "";
     const cloneTable = document.createElement("table");
-    cloneTable.style.width = mainTable.offsetWidth + "px";
-    cloneTable.style.minWidth = mainTable.offsetWidth + "px";
+    const anchoReal = mainTable.offsetWidth + "px";
+    cloneTable.style.width = anchoReal;
+    cloneTable.style.minWidth = anchoReal;
     const colgroupOriginal = mainTable.querySelector("colgroup");
     if(colgroupOriginal) cloneTable.appendChild(colgroupOriginal.cloneNode(true));
     cloneTable.appendChild(theadOriginal.cloneNode(true));
     fixedHeadInner.appendChild(cloneTable);
-    sincronizarHeaderFijo();
   }
 
   function construirHeaderFijo(){
@@ -1632,30 +1632,26 @@
     // cambiar de mes, donde el ancho de la tabla puede cambiar bastante) antes de medir
     // y clonar el encabezado — si no, el clon puede quedar con un ancho viejo y desalineado.
     requestAnimationFrame(()=>{
-      requestAnimationFrame(construirHeaderFijoAhora);
+      requestAnimationFrame(()=>{
+        reconstruirClonHeader();
+        sincronizarHeaderFijo();
+      });
     });
   }
 
   function sincronizarHeaderFijo(){
     const rect = theadOriginal.getBoundingClientRect();
     if(rect.top <= 0){
+      // Reconstruimos el clon COMPLETO en cada sincronización (no solo el ancho): así nunca
+      // puede quedar desalineado con la tabla real, sea cual sea la causa del desfasaje en el
+      // celu (barra de Safari, redondeos, lo que sea) — siempre refleja el estado actual.
+      reconstruirClonHeader();
+
       const wrapRect = scrollWrap.getBoundingClientRect();
       fixedHead.style.display = "block";
       fixedHead.style.left = wrapRect.left + "px";
       fixedHead.style.width = wrapRect.width + "px";
       fixedHeadInner.style.transform = "translateX(" + (-scrollWrap.scrollLeft) + "px)";
-
-      // Reajustamos el ancho del clon en cada sincronización (no solo al reconstruirlo): en el
-      // celu, Safari a veces achica/agranda su propia barra al scrollear, lo que cambia el ancho
-      // real disponible — sin esto, el clon queda con una medida vieja y se desalinea.
-      const cloneTable = fixedHeadInner.querySelector("table");
-      if(cloneTable){
-        const anchoReal = mainTable.offsetWidth + "px";
-        if(cloneTable.style.width !== anchoReal){
-          cloneTable.style.width = anchoReal;
-          cloneTable.style.minWidth = anchoReal;
-        }
-      }
     } else {
       fixedHead.style.display = "none";
     }
