@@ -152,7 +152,7 @@
   /* Solo en pantallas de celu: columna de unidades un poco más ancha y nombre en 2 líneas
      en vez de cortado con "...". No afecta a la notebook/desktop. */
   @media (max-width: 600px){
-    #mainTable colgroup col:first-child{ width:112px !important; }
+    colgroup col:first-child{ width:112px !important; }
     .unit-name{
       white-space:normal !important;
       overflow:visible !important;
@@ -209,8 +209,6 @@
     <tbody id="bodyTable"></tbody>
   </table>
 </div>
-
-<div id="debugPanel" style="position:fixed; bottom:50px; left:8px; right:8px; z-index:200; background:rgba(0,0,0,.85); color:#0f0; font-family:monospace; font-size:10px; padding:8px; border-radius:8px; line-height:1.5; white-space:pre;"></div>
 
 <footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
@@ -1636,18 +1634,6 @@
     const topBar = document.getElementById("topBar");
     const offsetTop = topBar ? topBar.offsetHeight : 0;
     const rect = theadOriginal.getBoundingClientRect();
-
-    const debugPanel = document.getElementById("debugPanel");
-    if(debugPanel){
-      debugPanel.textContent =
-        "window.scrollY: " + window.scrollY + "\n" +
-        "thead rect.top: " + Math.round(rect.top) + "\n" +
-        "topBar offsetHeight: " + offsetTop + "\n" +
-        "scrollWrap.scrollTop: " + scrollWrap.scrollTop + "\n" +
-        "scrollWrap.scrollLeft: " + scrollWrap.scrollLeft + "\n" +
-        "condicion (rect.top < offsetTop): " + (rect.top < offsetTop) + "\n" +
-        "fixedHead display: " + fixedHead.style.display;
-    }
 
     if(rect.top < offsetTop){
       reconstruirClonHeader();
