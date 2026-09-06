@@ -1711,6 +1711,7 @@
 
   scrollWrap.addEventListener("scroll", fijarColumnaUnidad, {passive:true});
   window.addEventListener("scroll", actualizarDebug, {passive:true});
+  actualizarDebug();
 
   construirHeaderFijo();
   window.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
