@@ -216,6 +216,8 @@
   </table>
 </div>
 
+<div id="debugPanel" style="position:fixed; bottom:50px; left:8px; right:8px; z-index:200; background:rgba(0,0,0,.9); color:#0f0; font-family:monospace; font-size:10px; padding:8px; border-radius:8px; line-height:1.5; white-space:pre;"></div>
+
 <footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
 <div id="barraMesesAbajo" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px; flex-wrap:wrap;">
@@ -1666,24 +1668,49 @@
   // encabezado de arriba — el sticky nativo del navegador no es confiable en el celu cuando
   // se scrollea mucho hacia la derecha.
   function fijarColumnaUnidad(){
+    try{
+      const sw = document.getElementById("scrollWrap");
+      if(!sw) return;
+      const transformStr = sw.scrollLeft ? ("translateX(" + sw.scrollLeft + "px)") : "";
+
+      const celdasUnidad = document.querySelectorAll("tbody td.unit");
+      celdasUnidad.forEach(td=>{
+        td.style.transform = transformStr;
+      });
+
+      const filaEncabezado = document.getElementById("headRow");
+      const primeraCeldaReal = filaEncabezado ? filaEncabezado.querySelector("th:first-child") : null;
+      if(primeraCeldaReal) primeraCeldaReal.style.transform = transformStr;
+
+      const claseClon = document.getElementById("fixedHeadInner");
+      const primeraCeldaClon = claseClon ? claseClon.querySelector("th:first-child") : null;
+      if(primeraCeldaClon) primeraCeldaClon.style.transform = transformStr;
+
+      actualizarDebug();
+    }catch(e){
+      const debugPanel = document.getElementById("debugPanel");
+      if(debugPanel) debugPanel.textContent = "ERROR en fijarColumnaUnidad:\n" + e.message + "\n" + e.stack;
+    }
+  }
+
+  function actualizarDebug(){
+    const debugPanel = document.getElementById("debugPanel");
+    if(!debugPanel) return;
     const sw = document.getElementById("scrollWrap");
-    if(!sw) return;
-    const transformStr = sw.scrollLeft ? ("translateX(" + sw.scrollLeft + "px)") : "";
-
-    document.querySelectorAll("tbody td.unit").forEach(td=>{
-      td.style.transform = transformStr;
-    });
-
-    const filaEncabezado = document.getElementById("headRow");
-    const primeraCeldaReal = filaEncabezado ? filaEncabezado.querySelector("th:first-child") : null;
-    if(primeraCeldaReal) primeraCeldaReal.style.transform = transformStr;
-
-    const claseClon = document.getElementById("fixedHeadInner");
-    const primeraCeldaClon = claseClon ? claseClon.querySelector("th:first-child") : null;
-    if(primeraCeldaClon) primeraCeldaClon.style.transform = transformStr;
+    const unidad0 = document.querySelector("tbody td.unit");
+    const theadRect = theadOriginal.getBoundingClientRect();
+    const topBar = document.getElementById("topBar");
+    debugPanel.textContent =
+      "scrollWrap.scrollLeft: " + (sw ? sw.scrollLeft : "N/A") + "\n" +
+      "cant. td.unit: " + document.querySelectorAll("tbody td.unit").length + "\n" +
+      "transform 1er td.unit: " + (unidad0 ? (unidad0.style.transform || "(vacio)") : "N/A") + "\n" +
+      "thead rect.top: " + Math.round(theadRect.top) + "\n" +
+      "topBar offsetHeight: " + (topBar ? topBar.offsetHeight : "N/A") + "\n" +
+      "fixedHead display: " + fixedHead.style.display;
   }
 
   scrollWrap.addEventListener("scroll", fijarColumnaUnidad, {passive:true});
+  window.addEventListener("scroll", actualizarDebug, {passive:true});
 
   construirHeaderFijo();
   window.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
