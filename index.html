@@ -34,7 +34,8 @@
     --topbar-alto:51px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
+  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);height:100%;overflow:hidden;}
+  body{display:flex;flex-direction:column;}
 
   .tab-btn{
     background:#1f3157;border:none;border-radius:20px;
@@ -43,10 +44,13 @@
   }
   .tab-btn.active{background:var(--gold);color:var(--navy-dark);}
 
-  .scroll-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  #wrapHeaderDias, #wrapUnidades, #wrapDatos{ scrollbar-width:none; }
+  #wrapHeaderDias::-webkit-scrollbar, #wrapUnidades::-webkit-scrollbar{ display:none; }
 
   table{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;}
-  thead{position:relative;z-index:30;}
+
+  #tablaHeaderDias, #tablaDatos{ min-width:max-content; }
+
   thead th{
     background:var(--navy);
     color:var(--gold);
@@ -54,32 +58,24 @@
     font-weight:700;
     text-align:center;
     padding:10px 4px;
-    position:sticky;top:var(--topbar-alto);
-    z-index:15;
+    height:var(--fila-header-alto,40px);
+    box-sizing:border-box;
     border-right:1px solid rgba(255,255,255,.08);
   }
   thead th .rango{display:block;color:#c9d2e2;font-weight:400;font-size:9.5px;margin-top:2px;}
-  thead th:first-child{
-    text-align:left;
-    padding-left:8px;
-    color:var(--gold);
-    font-size:10.5px;
-    font-weight:700;
-    letter-spacing:.3px;
-    border-right:2px solid var(--gold);
-    position:sticky;left:0;top:var(--topbar-alto);z-index:20;
-  }
 
-  tbody td.unit{
-    position:sticky;left:0;
+  #bodyUnidades tr, #bodyTable tr{ height:var(--fila-alto,58px); }
+
+  td.unit{
     background:inherit;
     padding:8px 4px 8px 8px;
     border-right:2px solid var(--gold);
     overflow:hidden;
-    z-index:8;
+    box-sizing:border-box;
+    height:var(--fila-alto,58px);
   }
-  tbody tr:nth-child(odd) td.unit{background:var(--cal-bg);}
-  tbody tr:nth-child(even) td.unit{background:var(--cal-bg-alt);}
+  #bodyUnidades tr:nth-child(odd) td.unit, #bodyTable tr:nth-child(odd) td.cell{background:var(--cal-bg);}
+  #bodyUnidades tr:nth-child(even) td.unit, #bodyTable tr:nth-child(even) td.cell{background:var(--cal-bg-alt);}
 
   .unit-name{font-size:11px;font-weight:600;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .unit-code{font-size:9px;color:var(--cal-text-muted);display:block;margin-top:1px;white-space:nowrap;}
@@ -88,10 +84,9 @@
     padding:3px 2px;
     text-align:center;
     border-right:1px solid var(--cal-border);
+    box-sizing:border-box;
   }
   td.cell.media-am{border-right:none;}
-  tbody tr:nth-child(odd) td.cell{background:var(--cal-bg);}
-  tbody tr:nth-child(even) td.cell{background:var(--cal-bg-alt);}
   tbody tr td.cell.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
   thead th.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
 
@@ -159,7 +154,7 @@
   /* Solo en pantallas de celu: columna de unidades un poco más ancha y nombre en 2 líneas
      en vez de cortado con "...". No afecta a la notebook/desktop. */
   @media (max-width: 600px){
-    colgroup col:first-child{ width:112px !important; }
+    :root{ --freeze-col-w:112px; }
     .unit-name{
       white-space:normal !important;
       overflow:visible !important;
@@ -169,8 +164,7 @@
     .solo-desktop{ display:none !important; }
   }
 
-  /* Dejamos lugar abajo para la barrita de meses (ahora visible en celu y notebook) */
-  html,body{ padding-bottom:40px; }
+  /* (el espacio para la barrita de meses ya no hace falta: ahora es parte normal de la columna) */
 
   .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;}
   .dlg-actions button{
@@ -204,18 +198,27 @@
 
 <div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
 
-<div class="scroll-wrap" id="scrollWrap">
-  <table id="mainTable">
-    <thead>
-      <tr id="headRow"><th>BP · TEMPORADA 2027</th></tr>
-    </thead>
-    <tbody id="bodyTable"></tbody>
-  </table>
+<div id="freezeGrid" style="display:grid; grid-template-columns:var(--freeze-col-w,100px) 1fr; grid-template-rows:auto 1fr; overflow:hidden; flex:1; min-height:0;">
+  <div id="panelEsquina" style="grid-column:1; grid-row:1; background:var(--navy); color:var(--gold); font-size:10.5px; font-weight:700; display:flex; align-items:center; padding-left:8px; border-right:2px solid var(--gold); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">BP · TEMPORADA 2027</div>
+
+  <div id="wrapHeaderDias" style="grid-column:2; grid-row:1; overflow:hidden;">
+    <table id="tablaHeaderDias"><colgroup id="colgroupHeader"></colgroup>
+      <thead><tr id="headRow"></tr></thead>
+    </table>
+  </div>
+
+  <div id="wrapUnidades" style="grid-column:1; grid-row:2; overflow:hidden; min-height:0;">
+    <table id="tablaUnidades"><tbody id="bodyUnidades"></tbody></table>
+  </div>
+
+  <div id="wrapDatos" style="grid-column:2; grid-row:2; overflow:auto; -webkit-overflow-scrolling:touch; min-height:0;">
+    <table id="tablaDatos"><colgroup id="colgroupDatos"></colgroup><tbody id="bodyTable"></tbody></table>
+  </div>
 </div>
 
 <footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
-<div id="barraMesesAbajo" style="position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px; flex-wrap:wrap;">
+<div id="barraMesesAbajo" style="display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px; flex-wrap:wrap;">
   <button class="tab-btn tab-btn-mini" data-vista="sep2026">Sept</button>
   <button class="tab-btn tab-btn-mini" data-vista="oct2026">Oct</button>
   <button class="tab-btn tab-btn-mini" data-vista="nov2026">Nov</button>
@@ -1048,62 +1051,61 @@
   const headRow = document.getElementById("headRow");
 
   function construirColgroup(){
-    const mainTable = document.getElementById("mainTable");
-    let colgroup = mainTable.querySelector("colgroup");
-    if(!colgroup){
-      colgroup = document.createElement("colgroup");
-      mainTable.insertBefore(colgroup, mainTable.firstChild);
-    }
-    colgroup.innerHTML = "";
-
     const n = COLUMNAS.length;
+    const colPercent = 100 / n; // ya no hay columna de unidad mezclada acá: 100% se reparte solo entre los días
     const esDiario = VISTAS[vistaActual].esDiario;
-    const unitPercent = esDiario ? 9 : 11;
-    const colPercent = (100 - unitPercent) / n;
     const colMinPx = esDiario ? 15 : 76;
-    const unitMinPx = esDiario ? 78 : 100;
 
-    const colUnidad = document.createElement("col");
-    colUnidad.style.width = unitPercent + "%";
-    colgroup.appendChild(colUnidad);
+    [ "colgroupHeader", "colgroupDatos" ].forEach(id=>{
+      const colgroup = document.getElementById(id);
+      colgroup.innerHTML = "";
+      for(let i=0; i<n; i++){
+        const col = document.createElement("col");
+        col.style.width = colPercent + "%";
+        colgroup.appendChild(col);
+      }
+    });
 
-    for(let i=0; i<n; i++){
-      const col = document.createElement("col");
-      col.style.width = colPercent + "%";
-      colgroup.appendChild(col);
-    }
-
-    mainTable.style.minWidth = (unitMinPx + n*colMinPx) + "px";
+    const anchoMinimo = (n * colMinPx) + "px";
+    document.getElementById("tablaHeaderDias").style.minWidth = anchoMinimo;
+    document.getElementById("tablaDatos").style.minWidth = anchoMinimo;
   }
 
   function calcularYAplicarAlturaCuadrada(){
-    const mainTable = document.getElementById("mainTable");
-    if(!mainTable) return;
-    const anchoTablaPx = mainTable.getBoundingClientRect().width;
+    const tablaDatos = document.getElementById("tablaDatos");
+    if(!tablaDatos) return;
+    const anchoTablaPx = tablaDatos.getBoundingClientRect().width;
     if(!anchoTablaPx) return;
 
     // No medimos celdas del cuerpo (pueden estar fusionadas si hay una reserva ahí, lo que
     // rompería el cálculo). En cambio, usamos el mismo % de columna que definimos en el
     // colgroup — así el resultado no depende de qué haya cargado en ningún casillero.
     const n = COLUMNAS.length;
-    const unitPercent = 9;
-    const colPercent = (100 - unitPercent) / n;
-    const anchoMediaDiaPx = anchoTablaPx * (colPercent / 100);
+    const anchoMediaDiaPx = anchoTablaPx / n;
     const anchoDiaCompletoPx = anchoMediaDiaPx * 2;
 
-    const paddingVertical = 6; // 3px arriba + 3px abajo (td.cell)
-    let altoSlot = anchoDiaCompletoPx - paddingVertical;
+    // Para que el día (las 2 mitades juntas) se vea cuadrado, el alto del casillero debe
+    // igualar el ancho VISIBLE de esas 2 mitades ya puestas una al lado de la otra — o sea,
+    // descontando el padding horizontal propio de cada una de las 2 celdas (2px + 2px cada una).
+    const paddingHorizontalTotal = 8;
+    let altoSlot = anchoDiaCompletoPx - paddingHorizontalTotal;
     // Tope de seguridad: un casillero de día jamás debería medir esto en ningún dispositivo real.
     // Si el cálculo da un número absurdo (por lo que sea), lo recortamos a un valor razonable
     // en vez de aplicar un tamaño roto.
     if(!isFinite(altoSlot) || altoSlot < 14) altoSlot = 14;
     if(altoSlot > 70) altoSlot = 70;
     document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
+
+    // El alto de fila lo comparten la tabla de unidades y la de datos (son tablas separadas
+    // ahora, por eso hay que fijarles el mismo número a las dos a propósito).
+    const filaAlto = Math.max(58, altoSlot + 6); // 6 = padding vertical real de td.cell (3px arriba + 3px abajo)
+    document.documentElement.style.setProperty("--fila-alto", filaAlto + "px");
   }
 
   function ajustarAlturaCuadrada(){
     if(!VISTAS[vistaActual].esDiario){
       document.documentElement.style.removeProperty("--dia-alto");
+      document.documentElement.style.setProperty("--fila-alto", "58px");
       return;
     }
     // Esperamos a que el navegador termine de acomodar el layout antes de medir
@@ -1115,9 +1117,7 @@
 
   function construirHeader(){
     headRow.innerHTML = "";
-    const thUnidad = document.createElement("th");
-    thUnidad.textContent = "BP · " + VISTAS[vistaActual].titulo;
-    headRow.appendChild(thUnidad);
+    document.getElementById("panelEsquina").textContent = "BP · " + VISTAS[vistaActual].titulo;
 
     if(VISTAS[vistaActual].esDiario){
       // Cada día real ocupa 2 columnas (mañana/tarde) en el cuerpo,
@@ -1160,6 +1160,7 @@
 
   // Armar cuerpo
   const body = document.getElementById("bodyTable");
+  const bodyUnidades = document.getElementById("bodyUnidades");
 
   function agruparGenerico(datosVista, columnasVista, uIdx){
     const grupos = [];
@@ -1194,14 +1195,18 @@
     return agruparGenerico(datos, COLUMNAS, uIdx);
   }
 
-  function construirFila(uIdx){
+  function construirFilaUnidad(uIdx){
     const u = UNIDADES[uIdx];
     const tr = document.createElement("tr");
-
     const tdUnit = document.createElement("td");
     tdUnit.className = "unit";
     tdUnit.innerHTML = '<span class="unit-name">'+u.nombre+'</span><span class="unit-code">'+u.codigo+'</span>';
     tr.appendChild(tdUnit);
+    return tr;
+  }
+
+  function construirFilaDatos(uIdx){
+    const tr = document.createElement("tr");
 
     agruparSemanas(uIdx).forEach(g=>{
       const td = document.createElement("td");
@@ -1251,8 +1256,10 @@
 
   function renderTodo(){
     body.innerHTML = "";
+    bodyUnidades.innerHTML = "";
     UNIDADES.forEach((u,uIdx)=>{
-      body.appendChild(construirFila(uIdx));
+      bodyUnidades.appendChild(construirFilaUnidad(uIdx));
+      body.appendChild(construirFilaDatos(uIdx));
     });
   }
 
@@ -1260,9 +1267,21 @@
   ajustarAlturaCuadrada();
   requestAnimationFrame(ajustarAlturaCuadrada);
 
+  // La altura real de la barra de arriba puede variar según el dispositivo/navegador — la
+  // medimos y la aplicamos, en vez de usar un número fijo (eso dejaba un hueco en la notebook).
+  function ajustarAlturaTopBar(){
+    const topBar = document.getElementById("topBar");
+    if(topBar) document.documentElement.style.setProperty("--topbar-alto", topBar.offsetHeight + "px");
+  }
+  ajustarAlturaTopBar();
+  requestAnimationFrame(ajustarAlturaTopBar);
+  window.addEventListener("resize", ajustarAlturaTopBar);
+
   function refrescarFila(uIdx){
     const filas = body.querySelectorAll("tr");
-    filas[uIdx].replaceWith(construirFila(uIdx));
+    filas[uIdx].replaceWith(construirFilaDatos(uIdx));
+    const filasUnidad = bodyUnidades.querySelectorAll("tr");
+    filasUnidad[uIdx].replaceWith(construirFilaUnidad(uIdx));
   }
 
   // Dialogo
@@ -1609,15 +1628,21 @@
   actualizarEstadoBoton();
   chequearAvisos();
 
-  // Header de días/semanas "congelado": clonamos la fila real a un div con position:fixed
-  // (el navegador optimiza esto muy bien, se siente instantáneo) usando EXACTAMENTE la misma
-  // fórmula de ancho que la tabla real (no medimos un número aparte), para que nunca se
-  // pueda desalinear.
-  const scrollWrap = document.getElementById("scrollWrap");
-  const mainTable = document.getElementById("mainTable");
-  // El encabezado de arriba y la columna de unidades quedan fijos con "position:sticky"
-  // nativo del navegador (ya configurado en el CSS) — cero retraso, porque no depende de
-  // que JavaScript reaccione al scroll: lo maneja el navegador directamente.
+  // "Paneles inmovilizados", como en Excel: la esquina, la fila de días y la columna de
+  // unidades NUNCA se tocan directamente — el usuario solo scrollea el panel de datos
+  // (wrapDatos), y acá lo replicamos a los otros dos. Esto no depende de ningún truco de CSS
+  // (sticky, position:fixed, etc.) que el navegador pueda interpretar distinto según el
+  // dispositivo — es la forma más simple y confiable de "congelar" filas/columnas.
+  const wrapDatos = document.getElementById("wrapDatos");
+  const wrapHeaderDias = document.getElementById("wrapHeaderDias");
+  const wrapUnidades = document.getElementById("wrapUnidades");
+  const scrollWrap = wrapDatos; // alias para el resto del código que ya usaba este nombre
+
+  wrapDatos.addEventListener("scroll", ()=>{
+    wrapHeaderDias.scrollLeft = wrapDatos.scrollLeft;
+    wrapUnidades.scrollTop = wrapDatos.scrollTop;
+  }, {passive:true});
+
   window.addEventListener("resize", ()=>{ ajustarAlturaCuadrada(); });
 
   // ---- Cambio de pestaña (Temporada / Septiembre 2026) ----
@@ -1644,10 +1669,15 @@
     chequearAvisos();
 
     if(posicionScroll === "fin"){
-      requestAnimationFrame(()=>{ scrollWrap.scrollLeft = scrollWrap.scrollWidth; });
+      requestAnimationFrame(()=>{
+        scrollWrap.scrollLeft = scrollWrap.scrollWidth;
+        wrapHeaderDias.scrollLeft = scrollWrap.scrollLeft;
+      });
     } else {
       scrollWrap.scrollLeft = 0;
+      wrapHeaderDias.scrollLeft = 0;
     }
+    wrapUnidades.scrollTop = scrollWrap.scrollTop;
 
     // Acompañamos el cambio: la pestaña activa se desplaza sola a la vista dentro de la barra
     // de arriba (importante en el celu). Va al final y blindado: si esto llegara a fallar en
