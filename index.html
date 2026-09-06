@@ -53,7 +53,7 @@
     font-weight:700;
     text-align:center;
     padding:10px 4px;
-    position:relative;
+    position:sticky;top:0;
     z-index:15;
     border-right:1px solid rgba(255,255,255,.08);
   }
@@ -66,11 +66,11 @@
     font-weight:700;
     letter-spacing:.3px;
     border-right:2px solid var(--gold);
-    position:relative;z-index:20;
+    position:sticky;left:0;top:0;z-index:20;
   }
 
   tbody td.unit{
-    position:relative;
+    position:sticky;left:0;
     background:inherit;
     padding:8px 4px 8px 8px;
     border-right:2px solid var(--gold);
@@ -202,10 +202,6 @@
 <div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
 
 <div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
-
-<div id="fixedHead" style="display:none; position:fixed; left:0; right:0; overflow:hidden; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.15);">
-  <div id="fixedHeadInner"></div>
-</div>
 
 <div class="scroll-wrap" id="scrollWrap">
   <table id="mainTable">
@@ -1257,7 +1253,6 @@
     UNIDADES.forEach((u,uIdx)=>{
       body.appendChild(construirFila(uIdx));
     });
-    fijarColumnaUnidad();
   }
 
   renderTodo();
@@ -1267,7 +1262,6 @@
   function refrescarFila(uIdx){
     const filas = body.querySelectorAll("tr");
     filas[uIdx].replaceWith(construirFila(uIdx));
-    fijarColumnaUnidad();
   }
 
   // Dialogo
@@ -1620,89 +1614,10 @@
   // pueda desalinear.
   const scrollWrap = document.getElementById("scrollWrap");
   const mainTable = document.getElementById("mainTable");
-  const fixedHead = document.getElementById("fixedHead");
-  const fixedHeadInner = document.getElementById("fixedHeadInner");
-  const theadOriginal = mainTable.querySelector("thead");
-
-  function reconstruirClonHeader(){
-    fixedHeadInner.innerHTML = "";
-    const cloneTable = document.createElement("table");
-    cloneTable.style.width = "100%";
-    cloneTable.style.minWidth = mainTable.style.minWidth || (mainTable.offsetWidth + "px");
-    cloneTable.style.tableLayout = "fixed";
-    cloneTable.style.borderCollapse = "separate";
-    cloneTable.style.borderSpacing = "0";
-    const colgroupOriginal = mainTable.querySelector("colgroup");
-    if(colgroupOriginal) cloneTable.appendChild(colgroupOriginal.cloneNode(true));
-    cloneTable.appendChild(theadOriginal.cloneNode(true));
-    fixedHeadInner.appendChild(cloneTable);
-  }
-
-  let clonHeaderVisible = false;
-
-  function sincronizarHeaderFijo(){
-    const topBar = document.getElementById("topBar");
-    const offsetTop = topBar ? topBar.offsetHeight : 0;
-    const rect = theadOriginal.getBoundingClientRect();
-
-    if(rect.top < offsetTop){
-      if(!clonHeaderVisible){
-        // Reconstruimos el clon solo justo en el momento en que pasa a estar visible
-        // (no en cada scroll — eso era pesado y generaba el retraso).
-        reconstruirClonHeader();
-        clonHeaderVisible = true;
-        fijarColumnaUnidad(); // el clon recién armado necesita el ajuste YA, sin esperar el próximo scroll horizontal
-      }
-      const wrapRect = scrollWrap.getBoundingClientRect();
-      fixedHead.style.display = "block";
-      fixedHead.style.top = offsetTop + "px";
-      fixedHead.style.left = wrapRect.left + "px";
-      fixedHead.style.width = wrapRect.width + "px";
-      fixedHeadInner.style.transform = "translateX(" + (-Math.max(0, scrollWrap.scrollLeft)) + "px)";
-    } else {
-      fixedHead.style.display = "none";
-      clonHeaderVisible = false;
-    }
-  }
-
-  function construirHeaderFijo(){
-    clonHeaderVisible = false; // fuerza una reconstrucción fresca (por ej. al cambiar de mes)
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(sincronizarHeaderFijo);
-    });
-  }
-
-  // La columna de unidades (izquierda) se "fija" moviéndola con JS, igual que hicimos con el
-  // encabezado de arriba — el sticky nativo del navegador no es confiable en el celu cuando
-  // se scrollea mucho hacia la derecha.
-  function fijarColumnaUnidad(){
-    const sw = document.getElementById("scrollWrap");
-    if(!sw) return;
-    // En iOS, al llegar al borde del scroll el "rebote" elástico puede hacer que
-    // scrollLeft sea momentáneamente negativo — si lo aplicáramos tal cual, empujaría
-    // la columna de nombres fuera de pantalla. Lo recortamos a 0 como mínimo.
-    const scrollLeftSeguro = Math.max(0, sw.scrollLeft);
-    const transformStr = scrollLeftSeguro ? ("translateX(" + scrollLeftSeguro + "px)") : "";
-
-    document.querySelectorAll("tbody td.unit").forEach(td=>{
-      td.style.transform = transformStr;
-    });
-
-    const filaEncabezado = document.getElementById("headRow");
-    const primeraCeldaReal = filaEncabezado ? filaEncabezado.querySelector("th:first-child") : null;
-    if(primeraCeldaReal) primeraCeldaReal.style.transform = transformStr;
-
-    const claseClon = document.getElementById("fixedHeadInner");
-    const primeraCeldaClon = claseClon ? claseClon.querySelector("th:first-child") : null;
-    if(primeraCeldaClon) primeraCeldaClon.style.transform = transformStr;
-  }
-
-  scrollWrap.addEventListener("scroll", fijarColumnaUnidad, {passive:true});
-
-  construirHeaderFijo();
-  window.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
-  scrollWrap.addEventListener("scroll", sincronizarHeaderFijo, {passive:true});
-  window.addEventListener("resize", ()=>{ ajustarAlturaCuadrada(); construirHeaderFijo(); });
+  // El encabezado de arriba y la columna de unidades quedan fijos con "position:sticky"
+  // nativo del navegador (ya configurado en el CSS) — cero retraso, porque no depende de
+  // que JavaScript reaccione al scroll: lo maneja el navegador directamente.
+  window.addEventListener("resize", ()=>{ ajustarAlturaCuadrada(); });
 
   // ---- Cambio de pestaña (Temporada / Septiembre 2026) ----
   function cambiarVista(nuevaVista, posicionScroll){
@@ -1725,7 +1640,6 @@
     renderTodo();
     ajustarAlturaCuadrada();
     requestAnimationFrame(ajustarAlturaCuadrada);
-    construirHeaderFijo();
     chequearAvisos();
 
     if(posicionScroll === "fin"){
