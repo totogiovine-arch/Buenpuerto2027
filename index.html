@@ -1638,13 +1638,20 @@
     fixedHeadInner.appendChild(cloneTable);
   }
 
+  let clonHeaderVisible = false;
+
   function sincronizarHeaderFijo(){
     const topBar = document.getElementById("topBar");
     const offsetTop = topBar ? topBar.offsetHeight : 0;
     const rect = theadOriginal.getBoundingClientRect();
 
     if(rect.top < offsetTop){
-      reconstruirClonHeader();
+      if(!clonHeaderVisible){
+        // Reconstruimos el clon solo justo en el momento en que pasa a estar visible
+        // (no en cada scroll — eso era pesado y generaba el retraso).
+        reconstruirClonHeader();
+        clonHeaderVisible = true;
+      }
       const wrapRect = scrollWrap.getBoundingClientRect();
       fixedHead.style.display = "block";
       fixedHead.style.top = offsetTop + "px";
@@ -1653,10 +1660,12 @@
       fixedHeadInner.style.transform = "translateX(" + (-Math.max(0, scrollWrap.scrollLeft)) + "px)";
     } else {
       fixedHead.style.display = "none";
+      clonHeaderVisible = false;
     }
   }
 
   function construirHeaderFijo(){
+    clonHeaderVisible = false; // fuerza una reconstrucción fresca (por ej. al cambiar de mes)
     requestAnimationFrame(()=>{
       requestAnimationFrame(sincronizarHeaderFijo);
     });
