@@ -1651,6 +1651,7 @@
         // (no en cada scroll — eso era pesado y generaba el retraso).
         reconstruirClonHeader();
         clonHeaderVisible = true;
+        fijarColumnaUnidad(); // el clon recién armado necesita el ajuste YA, sin esperar el próximo scroll horizontal
       }
       const wrapRect = scrollWrap.getBoundingClientRect();
       fixedHead.style.display = "block";
