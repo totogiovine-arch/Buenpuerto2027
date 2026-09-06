@@ -31,6 +31,7 @@
     --cal-text-muted:#94a3c2;
     --cal-dash:rgba(255,255,255,.28);
     --dia-alto:30px;
+    --topbar-alto:51px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
@@ -53,7 +54,7 @@
     font-weight:700;
     text-align:center;
     padding:10px 4px;
-    position:sticky;top:0;
+    position:sticky;top:var(--topbar-alto);
     z-index:15;
     border-right:1px solid rgba(255,255,255,.08);
   }
@@ -66,7 +67,7 @@
     font-weight:700;
     letter-spacing:.3px;
     border-right:2px solid var(--gold);
-    position:sticky;left:0;top:0;z-index:20;
+    position:sticky;left:0;top:var(--topbar-alto);z-index:20;
   }
 
   tbody td.unit{
