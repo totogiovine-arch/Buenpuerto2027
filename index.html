@@ -62,6 +62,7 @@
     box-sizing:border-box;
     border-right:1px solid rgba(255,255,255,.08);
     position:relative;
+    z-index:0;
   }
   thead th .rango{display:block;color:#c9d2e2;font-weight:400;font-size:9.5px;margin-top:2px;}
 
@@ -87,6 +88,7 @@
     border-right:1px solid var(--cal-border);
     box-sizing:border-box;
     position:relative;
+    z-index:0;
   }
   td.cell.media-am{border-right:none;}
 
@@ -97,7 +99,7 @@
     position:absolute;
     top:0; bottom:0;
     width:2.5px;
-    margin-left:-1.25px;
+    margin-left:-2.5px;
     background:rgba(255,255,255,.38);
     z-index:-1;
     pointer-events:none;
@@ -1084,6 +1086,22 @@
     document.getElementById("tablaDatos").style.minWidth = anchoMinimo;
   }
 
+  function corregirLineasFinde(){
+    // Corrige la posición de cada línea de finde/semana usando el ancho REAL ya renderizado
+    // (medido en píxeles), en vez de un % que se distorsiona un poco cuando varias columnas
+    // se combinan en una sola celda (una reserva de varios días/semanas).
+    const tablaDatos = document.getElementById("tablaDatos");
+    if(!tablaDatos) return;
+    const anchoTablaPx = tablaDatos.getBoundingClientRect().width;
+    if(!anchoTablaPx) return;
+    const n = COLUMNAS.length;
+    const anchoColumnaPx = anchoTablaPx / n;
+    document.querySelectorAll(".linea-finde[data-offset-columnas]").forEach(linea=>{
+      const offset = parseFloat(linea.dataset.offsetColumnas);
+      linea.style.left = (offset * anchoColumnaPx) + "px";
+    });
+  }
+
   function calcularYAplicarAlturaCuadrada(){
     const tablaDatos = document.getElementById("tablaDatos");
     if(!tablaDatos) return;
@@ -1109,6 +1127,8 @@
     if(altoSlot > 70) altoSlot = 70;
     document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
 
+    corregirLineasFinde();
+
     // El alto de fila lo comparten la tabla de unidades y la de datos (son tablas separadas
     // ahora, por eso hay que fijarles el mismo número a las dos a propósito).
     const filaAlto = Math.max(58, altoSlot + 6); // 6 = padding vertical real de td.cell (3px arriba + 3px abajo)
@@ -1119,6 +1139,9 @@
     if(!VISTAS[vistaActual].esDiario){
       document.documentElement.style.removeProperty("--dia-alto");
       document.documentElement.style.setProperty("--fila-alto", "58px");
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(corregirLineasFinde);
+      });
       return;
     }
     // Esperamos a que el navegador termine de acomodar el layout antes de medir
@@ -1144,14 +1167,24 @@
           const linea = document.createElement("div");
           linea.className = "linea-finde";
           linea.style.left = "100%";
+          linea.dataset.offsetColumnas = 2; // un día completo = 2 medias columnas
           th.appendChild(linea);
+          th.style.borderRight = "none";
         }
         headRow.appendChild(th);
       }
     } else {
-      COLUMNAS.forEach(s=>{
+      COLUMNAS.forEach((s,i)=>{
         const th = document.createElement("th");
         th.innerHTML = s.label + '<span class="rango">'+s.rango+'</span>';
+        if(i < COLUMNAS.length - 1){
+          const linea = document.createElement("div");
+          linea.className = "linea-finde";
+          linea.style.left = "100%";
+          linea.dataset.offsetColumnas = 1; // en Temporada cada columna es una semana entera
+          th.appendChild(linea);
+          th.style.borderRight = "none";
+        }
         headRow.appendChild(th);
       });
     }
@@ -1246,8 +1279,33 @@
           if(rangoDia !== "Vie" && rangoDia !== "Dom") continue;
           const linea = document.createElement("div");
           linea.className = "linea-finde";
+          // Posición aproximada con %, después se corrige con una medición real en píxeles
+          // (calcularYAplicarAlturaCuadrada) — así no dependemos de adivinar cómo el navegador
+          // reparte los bordes cuando varias columnas se combinan en una sola celda.
           linea.style.left = ((idx + 1 - g.inicio) / spanLen * 100) + "%";
+          linea.dataset.offsetColumnas = (idx + 1 - g.inicio);
           td.appendChild(linea);
+          // Si la línea gruesa cae justo en el borde derecho propio de esta celda, sacamos
+          // el borde finito de siempre ahí — si no, quedan las dos líneas juntas, una fina
+          // pegada a la gruesa, y se ve desprolijo.
+          if(idx === g.fin){
+            td.style.borderRight = "none";
+          }
+        }
+      } else {
+        // Temporada: no hay "días", pero separamos cada semana con la misma línea (mismo
+        // grosor, y también pasa por detrás si hay una reserva que ocupa varias semanas).
+        const spanLen = g.fin - g.inicio + 1;
+        for(let idx = g.inicio; idx <= g.fin; idx++){
+          if(idx === COLUMNAS.length - 1) continue; // no hace falta después de la última semana
+          const linea = document.createElement("div");
+          linea.className = "linea-finde";
+          linea.style.left = ((idx + 1 - g.inicio) / spanLen * 100) + "%";
+          linea.dataset.offsetColumnas = (idx + 1 - g.inicio);
+          td.appendChild(linea);
+          if(idx === g.fin){
+            td.style.borderRight = "none";
+          }
         }
       }
 
