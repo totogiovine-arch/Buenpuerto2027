@@ -34,7 +34,7 @@
     --topbar-alto:51px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);height:100%;overflow:hidden;}
+  html,body{margin:0;padding:0;background:var(--cal-bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text);height:100%;overflow:hidden;overscroll-behavior:none;}
   body{display:flex;flex-direction:column;}
 
   .tab-btn{
@@ -207,11 +207,11 @@
     </table>
   </div>
 
-  <div id="wrapUnidades" style="grid-column:1; grid-row:2; overflow:hidden; min-height:0;">
+  <div id="wrapUnidades" style="grid-column:1; grid-row:2; overflow:hidden; min-height:0; overscroll-behavior:none;">
     <table id="tablaUnidades"><tbody id="bodyUnidades"></tbody></table>
   </div>
 
-  <div id="wrapDatos" style="grid-column:2; grid-row:2; overflow:auto; -webkit-overflow-scrolling:touch; min-height:0;">
+  <div id="wrapDatos" style="grid-column:2; grid-row:2; overflow:auto; -webkit-overflow-scrolling:touch; min-height:0; overscroll-behavior:none;">
     <table id="tablaDatos"><colgroup id="colgroupDatos"></colgroup><tbody id="bodyTable"></tbody></table>
   </div>
 </div>
