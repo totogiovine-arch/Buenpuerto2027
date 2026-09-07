@@ -86,7 +86,7 @@
   .unit-code{font-size:var(--unit-code-font,8px);line-height:1.1;color:var(--cal-text-muted);display:block;white-space:nowrap;}
 
   td.cell{
-    padding:3px 2px;
+    padding:3px 0;
     text-align:center;
     border-right:1px solid var(--cal-border);
     box-sizing:border-box;
@@ -110,6 +110,12 @@
 
   .slot{
     height:var(--dia-alto);
+    /* El bloque se centra SOLO dentro de la celda (width + margin auto) en vez de depender
+       del padding del td. Antes dependía del padding y, cuando el código le sacaba el borde
+       derecho a la celda (para que no quedara una línea fina pegada a la gruesa de semana),
+       el bloque quedaba corrido: con aire a la izquierda y pegado a la línea de la derecha. */
+    width:calc(100% - var(--slot-inset-x,2px) * 2);
+    margin:0 auto;
     border-radius:6px;
     background:transparent;
     border:none;
@@ -1140,8 +1146,44 @@
     }
     colAnchoPxActual = colAnchoPx;
 
-    const altoSlot = Math.max(14, filaAlto - 6);
+    // CASILLERO CUADRADO en las vistas de mes: una vez que sabemos el ancho real que va a
+    // tener cada día (2 medias columnas), forzamos el alto de fila a ese mismo número. Así
+    // el casillero queda cuadrado de verdad, como pidió Tomi. La contra es que las 20
+    // unidades ya no entran todas de una y el panel scrollea en vertical — es el precio de
+    // que el día sea cuadrado y no un rectángulo chato.
+    // En Temporada NO aplica: ahí una columna es una semana entera (100px y pico de ancho),
+    // y hacerla cuadrada dejaría filas gigantes.
+    if(esDiario){
+      const anchoDia = colAnchoPx * 2;
+      filaAlto = Math.min(90, Math.max(26, anchoDia));
+    } else {
+      // Temporada: la columna es una semana entera, así que cuadrada no puede ser (quedarían
+      // filas gigantes). Pero el ALTO de fila lo igualamos al de las vistas de mes, para que
+      // al cambiar de pestaña la grilla se vea pareja. Usamos como referencia un mes de 30
+      // días (= 60 medias columnas) y repetimos exactamente el mismo cálculo.
+      const COLS_MES_REF = 60;
+      let colMesRef = Math.max(14, Math.round(filaAlto / 2));
+      if(anchoDisponible > 0){
+        const a = Math.floor((anchoDisponible / COLS_MES_REF) * 100) / 100;
+        if(a > colMesRef) colMesRef = a;
+      }
+      filaAlto = Math.min(90, Math.max(26, colMesRef * 2));
+    }
+
+    // Tamaño del bloque de reserva dentro del casillero. En las vistas de mes lo dejamos como
+    // estaba (ya quedó bien). En Temporada, donde la columna es una semana muy ancha, lo
+    // achicamos un poco en los dos ejes para que no quede tan invasivo, y el aire lateral es
+    // proporcional al ancho de la semana.
+    let altoSlot, insetX;
+    if(esDiario){
+      altoSlot = Math.max(14, filaAlto - 6);
+      insetX = 2;
+    } else {
+      altoSlot = Math.max(14, Math.round(filaAlto * 0.76));
+      insetX = Math.min(12, Math.max(3, Math.round(colAnchoPx * 0.07)));
+    }
     document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
+    document.documentElement.style.setProperty("--slot-inset-x", insetX + "px");
     document.documentElement.style.setProperty("--fila-alto", filaAlto + "px");
 
     // El bloque "Puerto Nuevo / BP 1" de la columna izquierda tiene que entrar entero dentro
