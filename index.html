@@ -1638,10 +1638,19 @@
   const wrapUnidades = document.getElementById("wrapUnidades");
   const scrollWrap = wrapDatos; // alias para el resto del código que ya usaba este nombre
 
-  wrapDatos.addEventListener("scroll", ()=>{
-    wrapHeaderDias.scrollLeft = wrapDatos.scrollLeft;
-    wrapUnidades.scrollTop = wrapDatos.scrollTop;
-  }, {passive:true});
+  const tablaHeaderDias = document.getElementById("tablaHeaderDias");
+  const tablaUnidades = document.getElementById("tablaUnidades");
+
+  function sincronizarPaneles(){
+    // Usamos "transform" en vez de asignar scrollLeft/scrollTop: el navegador lo aplica
+    // en el mismo instante (es una operación puramente visual), mientras que mover el
+    // scroll de otro elemento pasa por su propio mecanismo interno y puede sentirse con
+    // un pequeño retraso — que es justo lo que veíamos como "dos cosas separadas".
+    tablaHeaderDias.style.transform = "translateX(" + (-wrapDatos.scrollLeft) + "px)";
+    tablaUnidades.style.transform = "translateY(" + (-wrapDatos.scrollTop) + "px)";
+  }
+
+  wrapDatos.addEventListener("scroll", sincronizarPaneles, {passive:true});
 
   window.addEventListener("resize", ()=>{ ajustarAlturaCuadrada(); });
 
@@ -1671,13 +1680,12 @@
     if(posicionScroll === "fin"){
       requestAnimationFrame(()=>{
         scrollWrap.scrollLeft = scrollWrap.scrollWidth;
-        wrapHeaderDias.scrollLeft = scrollWrap.scrollLeft;
+        sincronizarPaneles();
       });
     } else {
       scrollWrap.scrollLeft = 0;
-      wrapHeaderDias.scrollLeft = 0;
+      sincronizarPaneles();
     }
-    wrapUnidades.scrollTop = scrollWrap.scrollTop;
 
     // Acompañamos el cambio: la pestaña activa se desplaza sola a la vista dentro de la barra
     // de arriba (importante en el celu). Va al final y blindado: si esto llegara a fallar en
