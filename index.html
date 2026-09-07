@@ -1144,7 +1144,6 @@
       const anchoParaLlenar = Math.floor((anchoDisponible / nCols) * 100) / 100;
       if(anchoParaLlenar > colAnchoPx) colAnchoPx = anchoParaLlenar;
     }
-    colAnchoPxActual = colAnchoPx;
 
     // CASILLERO CUADRADO en las vistas de mes: una vez que sabemos el ancho real que va a
     // tener cada día (2 medias columnas), forzamos el alto de fila a ese mismo número. Así
@@ -1168,7 +1167,19 @@
         if(a > colMesRef) colMesRef = a;
       }
       filaAlto = Math.min(90, Math.max(26, colMesRef * 2));
+
+      // CELULAR: en pantalla angosta las 11 semanas entraban todas juntas a 30px cada una y
+      // los nombres se partían en cuatro renglones ("Ami / ga / Laur / a"). Le damos a la
+      // semana un ancho cómodo y que la grilla scrollee con el dedo, igual que en los meses.
+      // El tope de 700px es para que esto NO toque la notebook ni la tablet, donde la semana
+      // ya se estira sola hasta llenar la pantalla.
+      if(anchoDisponible > 0 && anchoDisponible < 700){
+        const anchoComodo = Math.round(filaAlto * 3);
+        if(anchoComodo > colAnchoPx) colAnchoPx = anchoComodo;
+      }
     }
+
+    colAnchoPxActual = colAnchoPx;
 
     // Tamaño del bloque de reserva dentro del casillero. En las vistas de mes lo dejamos como
     // estaba (ya quedó bien). En Temporada, donde la columna es una semana muy ancha, lo
