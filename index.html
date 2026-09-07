@@ -70,17 +70,20 @@
 
   td.unit{
     background:inherit;
-    padding:8px 4px 8px 8px;
+    padding:2px 4px 2px 8px;
     border-right:2px solid var(--gold);
     overflow:hidden;
     box-sizing:border-box;
     height:var(--fila-alto,58px);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
   }
   #bodyUnidades tr:nth-child(odd) td.unit, #bodyTable tr:nth-child(odd) td.cell{background:var(--cal-bg);}
   #bodyUnidades tr:nth-child(even) td.unit, #bodyTable tr:nth-child(even) td.cell{background:var(--cal-bg-alt);}
 
-  .unit-name{font-size:11px;font-weight:600;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .unit-code{font-size:9px;color:var(--cal-text-muted);display:block;margin-top:1px;white-space:nowrap;}
+  .unit-name{font-size:var(--unit-font,10px);line-height:1.1;font-weight:600;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .unit-code{font-size:var(--unit-code-font,8px);line-height:1.1;color:var(--cal-text-muted);display:block;white-space:nowrap;}
 
   td.cell{
     padding:3px 2px;
@@ -166,16 +169,10 @@
 
   .tab-btn-mini{ padding:5px 10px !important; font-size:10px !important; border-radius:12px !important; }
 
-  /* Solo en pantallas de celu: columna de unidades un poco más ancha y nombre en 2 líneas
-     en vez de cortado con "...". No afecta a la notebook/desktop. */
+  /* Solo en pantallas de celu: columna de unidades un poco más ancha para que se lea mejor.
+     El nombre sigue siendo de una sola línea (con "...") en cualquier tamaño de pantalla. */
   @media (max-width: 600px){
-    :root{ --freeze-col-w:112px; }
-    .unit-name{
-      white-space:normal !important;
-      overflow:visible !important;
-      text-overflow:clip !important;
-      line-height:1.2;
-    }
+    :root{ --freeze-col-w:100px; }
     .solo-desktop{ display:none !important; }
   }
 
@@ -212,10 +209,10 @@
 <div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
 
 <div id="freezeGrid" style="display:grid; grid-template-columns:var(--freeze-col-w,100px) 1fr; grid-template-rows:auto 1fr; overflow:hidden; flex:1; min-height:0;">
-  <div id="panelEsquina" style="grid-column:1; grid-row:1; background:var(--navy); color:var(--gold); font-size:10.5px; font-weight:700; display:flex; align-items:center; padding-left:8px; border-right:2px solid var(--gold); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">BP · TEMPORADA 2027</div>
+  <div id="panelEsquina" style="grid-column:1; grid-row:1; background:var(--navy); color:var(--gold); font-size:10.5px; font-weight:700; display:flex; align-items:center; padding-left:8px; padding-right:4px; border-right:2px solid var(--gold); overflow:hidden; white-space:normal; line-height:1.25;">BP · TEMPORADA 2027</div>
 
   <div id="wrapHeaderDias" style="grid-column:2; grid-row:1; overflow:hidden;">
-    <table id="tablaHeaderDias"><colgroup id="colgroupHeader"></colgroup>
+    <table id="tablaHeaderDias" style="margin:0 auto;"><colgroup id="colgroupHeader"></colgroup>
       <thead><tr id="headRow"></tr></thead>
     </table>
   </div>
@@ -225,13 +222,12 @@
   </div>
 
   <div id="wrapDatos" style="grid-column:2; grid-row:2; overflow:auto; -webkit-overflow-scrolling:touch; min-height:0; overscroll-behavior:none;">
-    <div id="contenidoDatos" style="position:relative;">
+    <div id="contenidoDatos" style="position:relative; margin:0 auto; width:fit-content;">
       <table id="tablaDatos"><colgroup id="colgroupDatos"></colgroup><tbody id="bodyTable"></tbody></table>
     </div>
   </div>
 </div>
 
-<footer>Condominio Buen Puerto · Calendario local del dispositivo</footer>
 
 <div id="barraMesesAbajo" style="display:flex; gap:6px; justify-content:center; background:var(--navy-dark); border-top:1px solid var(--cal-border); padding:6px 10px; flex-wrap:wrap;">
   <button class="tab-btn tab-btn-mini" data-vista="sep2026">Sept</button>
@@ -1065,25 +1061,31 @@
   // Armar encabezado
   const headRow = document.getElementById("headRow");
 
+  let colAnchoPxActual = 18; // la usa después calcularYAplicarAlturaCuadrada, para el mismo ancho exacto
+
   function construirColgroup(){
     const n = COLUMNAS.length;
-    const colPercent = 100 / n; // ya no hay columna de unidad mezclada acá: 100% se reparte solo entre los días
-    const esDiario = VISTAS[vistaActual].esDiario;
-    const colMinPx = esDiario ? 15 : 76;
+    // El ancho de columna ya lo calculó calcularTamanoCasillero() (a partir del alto
+    // disponible, para que el casillero sea cuadrado y llene la pantalla verticalmente).
+    const colAnchoPx = colAnchoPxActual;
 
     [ "colgroupHeader", "colgroupDatos" ].forEach(id=>{
       const colgroup = document.getElementById(id);
       colgroup.innerHTML = "";
       for(let i=0; i<n; i++){
         const col = document.createElement("col");
-        col.style.width = colPercent + "%";
+        col.style.width = colAnchoPx + "px";
         colgroup.appendChild(col);
       }
     });
 
-    const anchoMinimo = (n * colMinPx) + "px";
-    document.getElementById("tablaHeaderDias").style.minWidth = anchoMinimo;
-    document.getElementById("tablaDatos").style.minWidth = anchoMinimo;
+    const anchoTotal = (n * colAnchoPx) + "px";
+    const tablaHeaderDias = document.getElementById("tablaHeaderDias");
+    const tablaDatos = document.getElementById("tablaDatos");
+    tablaHeaderDias.style.width = anchoTotal;
+    tablaHeaderDias.style.minWidth = anchoTotal;
+    tablaDatos.style.width = anchoTotal;
+    tablaDatos.style.minWidth = anchoTotal;
   }
 
   function corregirLineasFinde(){
@@ -1102,56 +1104,73 @@
     });
   }
 
-  function calcularYAplicarAlturaCuadrada(){
-    const tablaDatos = document.getElementById("tablaDatos");
-    if(!tablaDatos) return;
-    const anchoTablaPx = tablaDatos.getBoundingClientRect().width;
-    if(!anchoTablaPx) return;
+  function calcularTamanoCasillero(){
+    // ALTO: repartimos la altura disponible entre todas las unidades, así las filas llenan
+    // la pantalla verticalmente (con un mínimo legible; si no entran, el panel scrollea).
+    //
+    // ANCHO: partimos del ancho "cuadrado" (mismo número que el alto de fila) pero, si con
+    // eso la grilla no llega a cubrir el ancho de la pantalla, ESTIRAMOS las columnas hasta
+    // llenarla. Antes no lo hacíamos y por eso en la notebook quedaba el calendario chiquito
+    // y centrado, con un hueco grande a los costados. En el celu, donde el ancho disponible
+    // es chico, gana el ancho cuadrado y la grilla scrollea en horizontal como siempre.
+    const wrapDatos = document.getElementById("wrapDatos");
+    const alturaDisponible = wrapDatos ? wrapDatos.clientHeight : 0;
+    const anchoDisponible = wrapDatos ? wrapDatos.clientWidth : 0;
+    const cantUnidades = (typeof UNIDADES !== "undefined" && UNIDADES.length) ? UNIDADES.length : 20;
+    const esDiario = VISTAS[vistaActual].esDiario;
 
-    // No medimos celdas del cuerpo (pueden estar fusionadas si hay una reserva ahí, lo que
-    // rompería el cálculo). En cambio, usamos el mismo % de columna que definimos en el
-    // colgroup — así el resultado no depende de qué haya cargado en ningún casillero.
-    const n = COLUMNAS.length;
-    const anchoMediaDiaPx = anchoTablaPx / n;
-    const anchoDiaCompletoPx = anchoMediaDiaPx * 2;
+    let filaAlto = alturaDisponible > 0 ? (alturaDisponible / cantUnidades) : 38;
+    if(!isFinite(filaAlto) || filaAlto < 26) filaAlto = 26;
+    if(filaAlto > 90) filaAlto = 90;
 
-    // Para que el día (las 2 mitades juntas) se vea cuadrado, el alto del casillero debe
-    // igualar el ancho VISIBLE de esas 2 mitades ya puestas una al lado de la otra — o sea,
-    // descontando el padding horizontal propio de cada una de las 2 celdas (2px + 2px cada una).
-    const paddingHorizontalTotal = 8;
-    let altoSlot = anchoDiaCompletoPx - paddingHorizontalTotal;
-    // Tope de seguridad: un casillero de día jamás debería medir esto en ningún dispositivo real.
-    // Si el cálculo da un número absurdo (por lo que sea), lo recortamos a un valor razonable
-    // en vez de aplicar un tamaño roto.
-    if(!isFinite(altoSlot) || altoSlot < 14) altoSlot = 14;
-    if(altoSlot > 70) altoSlot = 70;
+    let colAnchoPx;
+    if(esDiario){
+      colAnchoPx = Math.max(14, Math.round(filaAlto / 2)); // 2 medias columnas = un día del mismo ancho que alto
+    } else {
+      colAnchoPx = Math.max(30, Math.round(filaAlto)); // Temporada: 1 columna = 1 semana, cuadrada
+    }
+
+    // Estirar para llenar el ancho, si sobra lugar.
+    const nCols = (typeof COLUMNAS !== "undefined" && COLUMNAS.length) ? COLUMNAS.length : 0;
+    if(anchoDisponible > 0 && nCols > 0){
+      // Truncamos a 2 decimales (nunca redondeamos para arriba) para que el total no se pase
+      // del ancho real y no aparezca una barra de scroll horizontal de 1 o 2 píxeles.
+      const anchoParaLlenar = Math.floor((anchoDisponible / nCols) * 100) / 100;
+      if(anchoParaLlenar > colAnchoPx) colAnchoPx = anchoParaLlenar;
+    }
+    colAnchoPxActual = colAnchoPx;
+
+    const altoSlot = Math.max(14, filaAlto - 6);
     document.documentElement.style.setProperty("--dia-alto", altoSlot + "px");
-
-    corregirLineasFinde();
-
-    // El alto de fila lo comparten la tabla de unidades y la de datos (son tablas separadas
-    // ahora, por eso hay que fijarles el mismo número a las dos a propósito).
-    const filaAlto = Math.max(58, altoSlot + 6); // 6 = padding vertical real de td.cell (3px arriba + 3px abajo)
     document.documentElement.style.setProperty("--fila-alto", filaAlto + "px");
+
+    // El bloque "Puerto Nuevo / BP 1" de la columna izquierda tiene que entrar entero dentro
+    // del alto de fila. Cuando las filas quedaban chicas, el texto no entraba y se cortaba
+    // por arriba. Acá calculamos el tamaño de letra máximo que entra en dos renglones.
+    const espacioTexto = Math.max(12, filaAlto - 4); // descontando el padding de arriba y abajo
+    let fNombre = Math.floor((espacioTexto / 1.98) * 10) / 10; // 2 renglones con line-height 1.1
+    if(fNombre > 10) fNombre = 10;   // tope: no agrandamos más allá del diseño original
+    if(fNombre < 7.5) fNombre = 7.5; // piso: nunca ilegible
+    const fCodigo = Math.max(6.5, Math.round(fNombre * 0.8 * 10) / 10);
+    document.documentElement.style.setProperty("--unit-font", fNombre + "px");
+    document.documentElement.style.setProperty("--unit-code-font", fCodigo + "px");
+
+    if(!esDiario){
+      const altoHeader = Math.min(70, Math.max(40, filaAlto * 0.6));
+      document.documentElement.style.setProperty("--fila-header-alto", altoHeader + "px");
+    } else {
+      document.documentElement.style.removeProperty("--fila-header-alto");
+    }
   }
 
   function ajustarAlturaCuadrada(){
-    if(!VISTAS[vistaActual].esDiario){
-      document.documentElement.style.removeProperty("--dia-alto");
-      document.documentElement.style.setProperty("--fila-alto", "58px");
-      requestAnimationFrame(()=>{
-        requestAnimationFrame(corregirLineasFinde);
-      });
-      return;
-    }
-    // Esperamos a que el navegador termine de acomodar el layout antes de medir
-    // (en el celu a veces el primer cálculo se hace antes de que la tabla se asiente del todo).
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(calcularYAplicarAlturaCuadrada);
-    });
+    calcularTamanoCasillero();
+    construirColgroup();
+    corregirLineasFinde();
   }
 
   function construirHeader(){
+    calcularTamanoCasillero();
     headRow.innerHTML = "";
     document.getElementById("panelEsquina").textContent = "BP · " + VISTAS[vistaActual].titulo;
 
