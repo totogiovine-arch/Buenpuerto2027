@@ -61,6 +61,7 @@
     height:var(--fila-header-alto,40px);
     box-sizing:border-box;
     border-right:1px solid rgba(255,255,255,.08);
+    position:relative;
   }
   thead th .rango{display:block;color:#c9d2e2;font-weight:400;font-size:9.5px;margin-top:2px;}
 
@@ -85,10 +86,22 @@
     text-align:center;
     border-right:1px solid var(--cal-border);
     box-sizing:border-box;
+    position:relative;
   }
   td.cell.media-am{border-right:none;}
-  tbody tr td.cell.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
-  thead th.finde{border-right-width:2.5px; border-right-color:rgba(255,255,255,.38);}
+
+  /* Línea de fin de semana: mismo dibujo (mismo grosor) tanto en el encabezado como en el
+     cuerpo. Se inserta como hijo de la celda ANTES que el bloque de la reserva, con z-index
+     negativo — así la tapa una reserva ocupada, y se ve en los casilleros vacíos. */
+  .linea-finde{
+    position:absolute;
+    top:0; bottom:0;
+    width:2.5px;
+    margin-left:-1.25px;
+    background:rgba(255,255,255,.38);
+    z-index:-1;
+    pointer-events:none;
+  }
 
   .slot{
     height:var(--dia-alto);
@@ -196,8 +209,6 @@
 
 <div id="toastBox" style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); z-index:70; background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.3); max-width:88vw; text-align:center;"></div>
 
-<div id="avisoBox" style="display:none; margin:10px 16px; padding:12px 14px; background:#fff4e0; border:1px solid #eecf9a; border-radius:10px; font-size:13px; color:#7a5310;"></div>
-
 <div id="freezeGrid" style="display:grid; grid-template-columns:var(--freeze-col-w,100px) 1fr; grid-template-rows:auto 1fr; overflow:hidden; flex:1; min-height:0;">
   <div id="panelEsquina" style="grid-column:1; grid-row:1; background:var(--navy); color:var(--gold); font-size:10.5px; font-weight:700; display:flex; align-items:center; padding-left:8px; border-right:2px solid var(--gold); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">BP · TEMPORADA 2027</div>
 
@@ -212,7 +223,9 @@
   </div>
 
   <div id="wrapDatos" style="grid-column:2; grid-row:2; overflow:auto; -webkit-overflow-scrolling:touch; min-height:0; overscroll-behavior:none;">
-    <table id="tablaDatos"><colgroup id="colgroupDatos"></colgroup><tbody id="bodyTable"></tbody></table>
+    <div id="contenidoDatos" style="position:relative;">
+      <table id="tablaDatos"><colgroup id="colgroupDatos"></colgroup><tbody id="bodyTable"></tbody></table>
+    </div>
   </div>
 </div>
 
@@ -1128,7 +1141,10 @@
         th.colSpan = 2;
         th.innerHTML = s.label + '<span class="rango">'+s.rango+'</span>';
         if(s.rango === "Vie" || s.rango === "Dom"){
-          th.classList.add("finde");
+          const linea = document.createElement("div");
+          linea.className = "linea-finde";
+          linea.style.left = "100%";
+          th.appendChild(linea);
         }
         headRow.appendChild(th);
       }
@@ -1218,12 +1234,20 @@
       if(VISTAS[vistaActual].esDiario && g.fin % 2 === 0){
         td.classList.add("media-am");
       }
-      // Línea gruesa solo al INICIO del finde (viernes, borde con el sábado) y al FINAL (domingo,
-      // borde con el lunes) — la línea entre sábado y domingo queda igual que las demás.
+      // Línea de fin de semana: se inserta COMO PARTE de esta celda (antes que el bloque de
+      // la reserva), en la posición exacta donde cae el finde dentro del rango de esta celda
+      // — así, si hay una reserva larga que lo atraviesa, la tapa naturalmente en vez de
+      // pasarle por encima; y si está vacío, se ve porque el casillero es transparente.
       if(VISTAS[vistaActual].esDiario){
-        const rangoDia = COLUMNAS[g.fin].rango;
-        if(rangoDia === "Vie" || rangoDia === "Dom"){
-          td.classList.add("finde");
+        const spanLen = g.fin - g.inicio + 1;
+        for(let idx = g.inicio; idx <= g.fin; idx++){
+          if(idx % 2 !== 1) continue; // solo nos importa el final de cada día (mitad "tarde")
+          const rangoDia = COLUMNAS[idx].rango;
+          if(rangoDia !== "Vie" && rangoDia !== "Dom") continue;
+          const linea = document.createElement("div");
+          linea.className = "linea-finde";
+          linea.style.left = ((idx + 1 - g.inicio) / spanLen * 100) + "%";
+          td.appendChild(linea);
         }
       }
 
@@ -1598,32 +1622,10 @@
   }
 
   function chequearAvisos(){
-    const ingresos = ingresosDeManana();
-    const box = document.getElementById("avisoBox");
-    if(ingresos.length === 0){
-      box.style.display = "none";
-      return;
-    }
-    const lista = ingresos.map(i => `• ${i.unidad} (${i.codigo}) — ${i.nombre}`).join("<br>");
-    box.innerHTML = "<strong>🔔 Ingresan mañana:</strong><br>" + lista;
-    box.style.display = "block";
-
-    if("Notification" in window && Notification.permission === "granted"){
-      ingresos.forEach(i=>{
-        new Notification("Buen Puerto — Ingreso mañana", {
-          body: `${i.unidad} (${i.codigo}): ${i.nombre}`,
-        });
-      });
-    }
+    // Desactivado a pedido: los avisos de ingresos ahora se manejan por Google Calendar.
   }
-
-  const btnActivarAvisos = null;
 
   function actualizarEstadoBoton(){ /* botón removido del diseño; sin acción visual */ }
-
-  if("Notification" in window && Notification.permission === "default"){
-    Notification.requestPermission().then(()=>{ chequearAvisos(); });
-  }
 
   actualizarEstadoBoton();
   chequearAvisos();
