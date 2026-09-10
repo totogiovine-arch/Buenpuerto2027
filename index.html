@@ -18,6 +18,8 @@
     --confirmado:#c0392b;
     --color-violeta:#7e57c2;
     --color-amarillo:#e0ab2c;
+    --color-verde:#2e9e5b;
+    --color-gris:#737e91;
     --libre-alt:#eaf4fa;
     --text:#1b2a4a;
     --muted:#8a93a3;
@@ -38,11 +40,11 @@
   body{display:flex;flex-direction:column;}
 
   .tab-btn{
-    background:#1f3157;border:none;border-radius:20px;
+    background:#a24e1c;border:none;border-radius:20px;
     padding:8px 14px;font-size:11px;font-weight:600;
-    color:#fff;cursor:pointer;white-space:nowrap;
+    color:#fff8f0;cursor:pointer;white-space:nowrap;
   }
-  .tab-btn.active{background:var(--gold);color:var(--navy-dark);}
+  .tab-btn.active{background:#eec436;color:var(--navy-dark);}
 
   #wrapHeaderDias, #wrapUnidades, #wrapDatos{ scrollbar-width:none; }
   #wrapHeaderDias::-webkit-scrollbar, #wrapUnidades::-webkit-scrollbar{ display:none; }
@@ -108,6 +110,21 @@
     pointer-events:none;
   }
 
+  /* Línea del día de hoy: sólo en las vistas de mes. Va únicamente en el cuerpo de la
+     grilla (no en el encabezado), así arranca justo en la base del cuadro del día sin
+     romperlo. Cae en el MEDIO del día (entre la mañana y la tarde), o sea justo debajo
+     del número. z-index negativo, igual que las líneas de finde: si hay una reserva la
+     tapa y la línea reaparece más abajo, en vez de cruzarle por encima. */
+  .linea-hoy{
+    position:absolute;
+    top:0; bottom:0;
+    width:2px;
+    margin-left:-1px;
+    background:#ff3b30;
+    z-index:-1;
+    pointer-events:none;
+  }
+
   .slot{
     height:var(--dia-alto);
     /* El bloque se centra SOLO dentro de la celda (width + margin auto) en vez de depender
@@ -134,6 +151,8 @@
   .slot.confirmado{background:var(--confirmado); border:none;}
   .slot.violeta{background:var(--color-violeta); border:none;}
   .slot.amarillo{background:var(--color-amarillo); border:none; color:var(--navy);}
+  .slot.verde{background:var(--color-verde); border:none;}
+  .slot.gris{background:var(--color-gris); border:none;}
 
   footer{
     background:var(--navy-dark);
@@ -160,7 +179,8 @@
   .duracion-row select{flex:1;min-width:90px;border:1px solid var(--border);border-radius:8px;padding:6px 6px;font-size:12.5px;}
   .duracion-row select:disabled{background:#f4f5f7;color:var(--muted);}
 
-  .color-picker{display:flex;flex-direction:column;gap:8px;padding-top:2px;}
+  /* Dos columnas: rojo|verde, amarillo|gris, violeta. Solo afecta al cuadro de carga. */
+  .color-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding-top:2px;}
   .color-opcion{display:flex;align-items:center;gap:10px;cursor:pointer;background:none;border:none;padding:2px 0;text-align:left;}
   .color-opcion span.texto{font-size:12px;font-weight:600;color:var(--text);}
   .color-swatch{
@@ -171,6 +191,8 @@
   .swatch-rojo{background:var(--confirmado);}
   .swatch-violeta{background:var(--color-violeta);}
   .swatch-amarillo{background:var(--color-amarillo);}
+  .swatch-verde{background:var(--color-verde);}
+  .swatch-gris{background:var(--color-gris);}
   .color-swatch.selected{border-color:var(--navy); box-shadow:0 0 0 2px #fff inset;}
 
   .tab-btn-mini{ padding:5px 10px !important; font-size:10px !important; border-radius:12px !important; }
@@ -278,9 +300,17 @@
           <span class="color-swatch swatch-rojo" aria-hidden="true"></span>
           <span class="texto">RESERVADO</span>
         </button>
+        <button type="button" class="color-opcion" data-color="verde">
+          <span class="color-swatch swatch-verde" aria-hidden="true"></span>
+          <span class="texto">INGRESÓ</span>
+        </button>
         <button type="button" class="color-opcion" data-color="amarillo">
           <span class="color-swatch swatch-amarillo" aria-hidden="true"></span>
           <span class="texto">RESERVA LÁPIZ</span>
+        </button>
+        <button type="button" class="color-opcion" data-color="gris">
+          <span class="color-swatch swatch-gris" aria-hidden="true"></span>
+          <span class="texto">SE RETIRÓ</span>
         </button>
         <button type="button" class="color-opcion" data-color="violeta">
           <span class="color-swatch swatch-violeta" aria-hidden="true"></span>
@@ -487,6 +517,19 @@
       }
     }
     return "temporada"; // si hoy no cae en ningún calendario cargado, arrancamos en Temporada como antes
+  }
+
+  // Índice de la columna donde cae HOY dentro de la pestaña que se está mirando.
+  // Devuelve -1 si hoy no pertenece a este mes, o si es Temporada (que va por semanas
+  // y no lleva la línea). Como busca la primera coincidencia, cae en la media columna
+  // AM, o sea el arranque del día: ahí es donde queremos la línea.
+  function indiceColumnaHoy(){
+    if(!VISTAS[vistaActual].esDiario) return -1;
+    const hoyStr = isoLocal(new Date());
+    for(let i=0; i<COLUMNAS.length; i++){
+      if(columnaContieneFecha(COLUMNAS[i], true, hoyStr)) return i;
+    }
+    return -1;
   }
 
   let vistaActual = detectarVistaDeHoy();
@@ -1176,7 +1219,7 @@
     if(!anchoTablaPx) return;
     const n = COLUMNAS.length;
     const anchoColumnaPx = anchoTablaPx / n;
-    document.querySelectorAll(".linea-finde[data-offset-columnas]").forEach(linea=>{
+    document.querySelectorAll(".linea-finde[data-offset-columnas], .linea-hoy[data-offset-columnas]").forEach(linea=>{
       const offset = parseFloat(linea.dataset.offsetColumnas);
       linea.style.left = (offset * anchoColumnaPx) + "px";
     });
@@ -1417,6 +1460,22 @@
       // pasarle por encima; y si está vacío, se ve porque el casillero es transparente.
       if(VISTAS[vistaActual].esDiario){
         const spanLen = g.fin - g.inicio + 1;
+
+        // Línea del día de hoy: al MEDIO del día, o sea en la frontera entre la media
+        // columna de la mañana y la de la tarde — que es justo debajo del número del día.
+        // Sólo se dibuja en los casilleros LIBRES: si la unidad tiene una reserva ese día,
+        // la línea se corta en esa fila y sigue en la de abajo. Antes se dibujaba igual y
+        // quedaba por detrás del bloque, pero como el bloque no ocupa toda la celda
+        // (tiene aire a los costados y arriba) asomaban pedacitos desalineados.
+        const idxHoy = indiceColumnaHoy();
+        if(!g.ocupado && idxHoy >= g.inicio && idxHoy <= g.fin){
+          const lineaHoy = document.createElement("div");
+          lineaHoy.className = "linea-hoy";
+          lineaHoy.style.left = ((idxHoy + 1 - g.inicio) / spanLen * 100) + "%";
+          lineaHoy.dataset.offsetColumnas = (idxHoy + 1 - g.inicio);
+          td.appendChild(lineaHoy);
+        }
+
         for(let idx = g.inicio; idx <= g.fin; idx++){
           if(idx % 2 !== 1) continue; // solo nos importa el final de cada día (mitad "tarde")
           const rangoDia = COLUMNAS[idx].rango;
