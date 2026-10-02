@@ -2472,6 +2472,16 @@ details.datos.alta .datos-in{margin-top:0}
 .fld input,.fld select,.fld textarea{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--text);width:100%;min-width:0}
 .fld input:disabled{background:#f4f5f7;color:var(--muted)}
 .fld textarea{min-height:40px;resize:vertical}
+.usel{position:relative}
+.usel-btn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--text);text-align:left}
+.usel-btn span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.usel-panel{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:260px;overflow:auto;padding:4px 0}
+.usel-panel label{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px;color:var(--text);cursor:pointer}
+.usel-panel label:hover{background:var(--paper-alt)}
+.usel-panel label.todo{font-weight:700;border-bottom:1px solid var(--border)}
+.usel-panel input{width:16px;height:16px;accent-color:var(--navy);margin:0}
+.usel-foot{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:6px 10px;display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted)}
+.usel-foot button{border:none;background:var(--navy);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700}
 .dlg-actions{display:flex;gap:8px;padding:0 16px 16px;flex-wrap:wrap}
 .dlg-actions button{flex:1;padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600}
 .btn-guardar{background:var(--navy);color:#fff}
@@ -2535,7 +2545,7 @@ details.datos.alta .datos-in{margin-top:0}
         <div class="datos-in">
           <div class="g2">
             <div class="fld s2"><label for="iInq">Inquilino</label><input id="iInq" autocomplete="off" placeholder="Nombre y apellido"></div>
-            <div class="fld s2"><label for="iUni">Unidad</label><select id="iUni"></select></div>
+            <div class="fld s2"><label for="iUniBtn">Unidad</label><div class="usel"><button type="button" id="iUniBtn" class="usel-btn" aria-haspopup="true" aria-expanded="false"><span id="iUniTxt">Elegí la unidad…</span><span aria-hidden="true">▾</span></button><div class="usel-panel" id="iUniPanel" hidden></div></div></div>
             <div class="fld"><label for="iIn">Check-in</label><input id="iIn" type="date"></div>
             <div class="fld"><label for="iOut">Check-out</label><input id="iOut" type="date"></div>
           </div>
@@ -2727,6 +2737,7 @@ details.datos.alta .datos-in{margin-top:0}
 
 (function(){
 const $ = s => ROOT.querySelector(s);
+const ROOTQ = s => ROOT.querySelectorAll(s);
 const DEF = {pf:10, pb:20, ps:50};
 const EPS = 0.5;
 const UNIDADES = [
@@ -2749,7 +2760,10 @@ const CON = [
 ];
 const LEGACY = {garrafa:'gastos', luz:'gastos', otros:'gastos'};
 const uName = c => (UNIDADES.find(u=>u.codigo===c)||{}).nombre || '';
-const uLabel = c => c==='TODO' ? 'Todo BP' : `${c||''} ${uName(c)}`.trim();
+const uLabel = c => c==='TODO' ? 'Todo BP' : c==='VARIAS' ? 'Varias Unidades' : `${c||''} ${uName(c)}`.trim();
+const unisDe = r => r.unidad==='VARIAS' ? (r.unidades||[]) : (r.unidad && r.unidad!=='TODO' ? [r.unidad] : []);
+const rLabel = r => uLabel(r.unidad);
+const rDetalle = r => r.unidad==='VARIAS' ? 'Varias Unidades: ' + unisDe(r).join(', ') : uLabel(r.unidad);
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sept','Oct','Nov','Dic'];
 let rows=[], col=null, ready=false, offline=false, downloads=null, q='';
 
@@ -2847,7 +2861,7 @@ function render(){
     const g = gi%2 ? 'g1' : 'g0';
     const cobCls = stCls(k.c.totalInq, k.cobrado);
     return `<tr class="${g} r1" data-id="${esc(r.id)}" tabindex="0">
-      <td rowspan="2" title="${esc(r.inquilino)} · ${esc(uLabel(r.unidad))} · ${esc(rango(r))}"><span class="n">${esc(uLabel(r.unidad))}</span><span class="m">${esc(r.inquilino)||'Sin nombre'} <span class="fx">${esc(rango(r))}</span></span></td>
+      <td rowspan="2" title="${esc(r.inquilino)} · ${esc(rDetalle(r))} · ${esc(rango(r))}"><span class="n">${esc(rLabel(r))}</span><span class="m">${esc(r.inquilino)||'Sin nombre'} <span class="fx">${esc(rango(r))}</span></span></td>
       <td class="lab">Total</td>
       <td class="st-es">${mil(k.c.totalInq)}</td>
       ${k.items.map(i=>`<td class="st-es">${mil(i.corr)}</td>`).join('')}${xRow(k,'t')}
@@ -2892,7 +2906,36 @@ function closeDlg(d){ if (typeof d.close==='function'){ if(d.open) d.close(); } 
 /* ---------- pop-up del alquiler ---------- */
 const ed = $('#ed');
 let editId = null, forceSave = false;
-$('#iUni').innerHTML = '<option value="">Elegí la unidad…</option><option value="TODO">Todo BP</option>' + UNIDADES.map(u=>`<option value="${u.codigo}">${u.codigo} ${esc(u.nombre)}</option>`).join('');
+let selUnis = [];   /* ['TODO'] o lista de códigos */
+$('#iUniPanel').innerHTML = '<label class="todo"><input type="checkbox" value="TODO">Todo BP</label>' +
+  UNIDADES.map(u=>`<label><input type="checkbox" value="${u.codigo}">${u.codigo} ${esc(u.nombre)}</label>`).join('') +
+  '<div class="usel-foot"><span id="iUniCount"></span><button type="button" id="iUniOk">Listo</button></div>';
+function pintarUnis(){
+  ROOTQ('#iUniPanel input').forEach(cb=>{ cb.checked = selUnis.includes(cb.value); });
+  const n = selUnis.filter(x=>x!=='TODO').length;
+  $('#iUniTxt').textContent = selUnis.includes('TODO') ? 'Todo BP' : n===0 ? 'Elegí la unidad…' : n===1 ? uLabel(selUnis[0]) : `Varias Unidades (${n})`;
+  $('#iUniCount').textContent = selUnis.includes('TODO') ? 'Todo el complejo' : n>1 ? `${n} unidades tildadas` : n===1 ? '1 unidad tildada' : 'Tildá una o varias';
+}
+function abrirUnis(abrir){ $('#iUniPanel').hidden = !abrir; $('#iUniBtn').setAttribute('aria-expanded', abrir?'true':'false'); }
+$('#iUniBtn').addEventListener('click', ()=>abrirUnis($('#iUniPanel').hidden));
+$('#iUniOk').addEventListener('click', ()=>abrirUnis(false));
+$('#iUniPanel').addEventListener('change', e=>{
+  const cb = e.target; if (!cb.matches('input[type=checkbox]')) return;
+  if (cb.value==='TODO') selUnis = cb.checked ? ['TODO'] : [];
+  else {
+    selUnis = selUnis.filter(x=>x!=='TODO' && x!==cb.value);
+    if (cb.checked) selUnis.push(cb.value);
+    selUnis.sort((a,b)=>UNIDADES.findIndex(u=>u.codigo===a)-UNIDADES.findIndex(u=>u.codigo===b));
+  }
+  pintarUnis();
+});
+ed.addEventListener('click', e=>{ if (!$('#iUniPanel').hidden && !e.target.closest('.usel')) abrirUnis(false); });
+function unidadDeSel(){
+  if (selUnis.includes('TODO')) return {unidad:'TODO', unidades:[]};
+  if (selUnis.length===1) return {unidad:selUnis[0], unidades:[]};
+  if (selUnis.length>1) return {unidad:'VARIAS', unidades:selUnis.slice()};
+  return {unidad:'', unidades:[]};
+}
 let edExtras = [], repVals = {};
 function repKeys(){ return [...CON.map(x=>({k:x.k, l:x.l, dot:x.dot})), ...edExtras.map(e=>({k:'x_'+e.id, l:e.nombre||'Ítem extra', dot:'d-extra'}))]; }
 function renderRepRows(){
@@ -2929,7 +2972,7 @@ $('#pExtras').addEventListener('click', e=>{
 function formData(){
   const p = sel => $(sel).value.trim()==='' ? null : num($(sel).value);
   return {
-    inquilino:$('#iInq').value.trim(), unidad:$('#iUni').value,
+    inquilino:$('#iInq').value.trim(), ...unidadDeSel(),
     checkin:$('#iIn').value||'', checkout:$('#iOut').value||'',
     ingreso:num($('#iIng').value), garrafa:num($('#iGar').value), luz:num($('#iLuz').value), limpieza:num($('#iLim').value), otros:num($('#iOtr').value),
     pf:p('#iPf')??DEF.pf, pb:p('#iPb')??DEF.pb, ps:p('#iPs')??DEF.ps,
@@ -2977,8 +3020,8 @@ function openEditor(id){
   const r = id ? rows.find(x=>x.id===id) : null;
   const n = r ? noches(r) : null;
   $('#edTitle').textContent = r ? (r.inquilino||'Alquiler') : 'Nuevo alquiler';
-  $('#edSub').textContent = r ? `${uLabel(r.unidad)}${r.checkin?' · '+fechaCorta(r.checkin):''}${r.checkout?' → '+fechaCorta(r.checkout):''}${n?` (${n} noches)`:''}` : 'Temporada intermedia';
-  $('#iInq').value=r?.inquilino||''; $('#iUni').value=r?.unidad||'';
+  $('#edSub').textContent = r ? `${rDetalle(r)}${r.checkin?' · '+fechaCorta(r.checkin):''}${r.checkout?' → '+fechaCorta(r.checkout):''}${n?` (${n} noches)`:''}` : 'Temporada intermedia';
+  $('#iInq').value=r?.inquilino||''; selUnis = !r || !r.unidad ? [] : r.unidad==='TODO' ? ['TODO'] : unisDe(r).slice(); pintarUnis(); abrirUnis(false);
   $('#iIn').value=r?.checkin||''; $('#iOut').value=r?.checkout||'';
   [['#iIng','ingreso'],['#iGar','garrafa'],['#iLuz','luz'],['#iLim','limpieza'],['#iOtr','otros']].forEach(([s,f])=>{ $(s).value = fmtIn(r?.[f]); });
   const p = r ? pcts(r) : DEF;
@@ -3014,7 +3057,7 @@ $('#edForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const d=formData(), errs=[];
   if (!d.inquilino) errs.push('Falta el nombre del inquilino.');
-  if (!d.unidad) errs.push('Elegí la unidad.');
+  if (!d.unidad) errs.push('Elegí la unidad (o tildá varias).');
   if (!d.ingreso) errs.push('Falta el total del alquiler.');
   if (d.pf+d.pb>100 || d.ps<0 || d.ps>100) errs.push('Revisá los porcentajes.');
   if (d.checkin && d.checkout && !noches(d)) errs.push('El check-out tiene que ser después del check-in.');
@@ -3072,7 +3115,7 @@ window.__hojaIntermedia = async function(wb, ExcelJS){
       const k=cuentas[gi]; const fill = gi%2 ? {type:'pattern',pattern:'solid',fgColor:{argb:ALT}} : null;
       T.ing+=k.c.totalInq; T.cob+=k.cobrado;
       const r1=ws.getRow(rn), r2=ws.getRow(rn+1);
-      r1.getCell(1).value = uLabel(r.unidad); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
+      r1.getCell(1).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(1).note = unisDe(r).join(', '); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
       ws.mergeCells(rn,1,rn+1,1); ws.mergeCells(rn,2,rn+1,2);
       r1.getCell(1).font={bold:true}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
       r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado';
@@ -3123,7 +3166,7 @@ $('#btnCsv').addEventListener('click', async ()=>{
       const k=cuentas[gi]; const fill = gi%2 ? {type:'pattern',pattern:'solid',fgColor:{argb:ALT}} : null;
       T.ing+=k.c.totalInq; T.cob+=k.cobrado;
       const r1=ws.getRow(rn), r2=ws.getRow(rn+1);
-      r1.getCell(1).value = uLabel(r.unidad); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
+      r1.getCell(1).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(1).note = unisDe(r).join(', '); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
       ws.mergeCells(rn,1,rn+1,1); ws.mergeCells(rn,2,rn+1,2);
       r1.getCell(1).font={bold:true}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
       r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado';
