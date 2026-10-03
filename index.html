@@ -2387,11 +2387,11 @@ tbody tr.r1 td{border-bottom:1px dashed rgba(255,255,255,.07);height:20px}
 tbody tr.r2 td{border-bottom:1px solid rgba(255,255,255,.32);height:20px}
 tbody tr.r1 td:first-child{border-bottom:1px solid rgba(255,255,255,.32)}
 tbody tr.hov td{background:#2c4170}
-col.c-lab{width:52px}
+col.c-lab{width:62px}
 td.lab{text-align:left;font-size:10px;font-weight:400;font-style:italic;color:var(--cal-muted);padding-left:10px}
 td.st-es{color:#fff}
 tbody tr.r2 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
-tfoot tr.f2 td:first-child{left:auto;border-right:1px solid var(--cal-border);padding-left:10px;z-index:2}
+tfoot tr.f2 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
 td{border-right:1px solid var(--cal-border);border-bottom:1px solid var(--cal-border);padding:0 8px;height:20px;vertical-align:middle;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.15;color:#dfe6f3}
 td:first-child{padding-left:16px}
 .n{display:block;font-weight:600;color:#fff;font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
@@ -2411,18 +2411,12 @@ td.st-debe{color:var(--c-fee);font-weight:700}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 .d-gasto{background:var(--c-gasto)}.d-extra{background:var(--gold)}.d-fee{background:var(--c-fee)}.d-fondo{background:var(--c-fondo)}.d-ale{background:var(--c-ale)}.d-tomas{background:var(--c-tomas)}
 /* pie: TOTAL / PAGADO / PENDIENTE */
-tfoot tr.f1 td{bottom:22px;border-top:2px solid var(--gold);color:var(--gold)}
-tfoot tr.f2 td{bottom:0}
+tfoot tr.f1 td{border-top:2px solid var(--gold);color:var(--gold)}
 tfoot tr.f2 td.st-none{color:#aab5cc}
 tfoot tr td.lab{color:var(--gold);font-size:10px;font-weight:400;letter-spacing:0;overflow:visible}
-tfoot td{position:sticky;z-index:2;background:var(--navy-dark);padding:0 8px;font-weight:700;font-size:11px}
-tfoot tr.f-total td{bottom:64px;border-top:2px solid var(--gold);color:var(--gold)}
-tfoot tr.f-pag td{bottom:32px;color:#fff}
-tfoot tr.f-pend td{bottom:0;color:var(--c-fee)}
+tfoot td{position:static;background:var(--navy-dark);padding:0 8px;font-weight:700;font-size:11px}
 tfoot td{height:22px}
-tfoot td:first-child{z-index:3;font-size:11px;letter-spacing:.08em}
-tfoot tr.f-pend td.cero{color:var(--ok)}
-tfoot tr.f-pend td.neg-cell{color:var(--neg)}
+tfoot tr.f1 td:first-child{position:sticky;left:0;z-index:2;font-size:11px;letter-spacing:.08em}
 #help{flex:none;padding:4px 16px;font-size:9.5px;color:var(--cal-muted);background:var(--navy-dark);border-top:1px solid var(--cal-border);padding-bottom:calc(4px + env(safe-area-inset-bottom,0px))}
 .empty{padding:28px 16px;color:var(--cal-muted);max-width:620px;display:flex;flex-direction:column;gap:8px}
 .empty h3{margin:0;color:#fff;font-size:15px}
