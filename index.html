@@ -2383,20 +2383,27 @@ thead th:first-child{z-index:4;text-align:center;padding-left:6px}
 tbody tr{cursor:pointer}
 tbody tr.g0 td{background:var(--cal-bg)}
 tbody tr.g1 td{background:var(--cal-bg-alt)}
-tbody tr.r1 td{border-bottom:1px dashed rgba(255,255,255,.07);height:20px}
-tbody tr.r2 td{border-bottom:1px solid rgba(255,255,255,.32);height:20px}
+tbody tr.r1 td,tbody tr.r2 td{border-bottom:1px dashed rgba(255,255,255,.07);height:17px;font-size:10.5px}
+tbody tr.r3 td{border-bottom:1px solid rgba(255,255,255,.32);height:17px;font-size:10.5px}
 tbody tr.r1 td:first-child{border-bottom:1px solid rgba(255,255,255,.32)}
 tbody tr.hov td{background:#2c4170}
-col.c-lab{width:62px}
+col.c-lab{width:72px}
 td.lab{text-align:left;font-size:10px;font-weight:400;font-style:italic;color:var(--cal-muted);padding-left:10px}
 td.st-es{color:#fff}
-tbody tr.r2 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
-tfoot tr.f2 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
+tbody tr.r2 td:first-child,tbody tr.r3 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
+tfoot tr.f2 td:first-child,tfoot tr.f3 td:first-child{position:static;border-right:1px solid var(--cal-border);padding-left:10px}
 td{border-right:1px solid var(--cal-border);border-bottom:1px solid var(--cal-border);padding:0 8px;height:20px;vertical-align:middle;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.15;color:#dfe6f3}
 td:first-child{padding-left:16px}
 .n{display:block;font-weight:600;color:#fff;font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
 .m{display:block;font-size:10px;color:var(--cal-muted);overflow:hidden;text-overflow:ellipsis}
-.m .fx{font-size:9px;opacity:.75;margin-left:4px}
+.n .fx{margin-left:5px;white-space:nowrap}
+tbody tr.r1 td:first-child{white-space:normal}
+tbody tr.r1 td:first-child .n{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2}
+td.st-pend{color:#dfe6f3}
+tfoot tr.f3 td{color:var(--c-fee)}
+tfoot tr.f3 td.st-ok{color:var(--ok)}
+tfoot tr.f3 td.st-over{color:var(--neg)}
+tfoot tr.f3 td.lab{color:var(--gold)}
 td.st-ok{color:var(--ok)}
 td.st-over{color:var(--neg);font-weight:700}
 td.st-part{color:#fff;font-weight:700}
@@ -2749,10 +2756,12 @@ const CON = [
   {k:'ale',      l:'Adm A',    dot:'d-ale',   corr:c=>c.ale},
   {k:'tomas',    l:'Adm T',    dot:'d-tomas', corr:c=>c.tomas},
   {k:'fee',      l:'Fee Ale',  dot:'d-fee',   corr:c=>c.fee},
-  {k:'gastos',   l:'Gastos',   dot:'d-gasto', corr:c=>c.gar+c.luz+c.otr},
+  {k:'garrafa',  l:'Garrafa',  dot:'d-gasto', corr:c=>c.gar},
+  {k:'luz',      l:'Luz',      dot:'d-gasto', corr:c=>c.luz},
+  {k:'otros',    l:'Otros gastos', dot:'d-gasto', corr:c=>c.otr, opt:true},
   {k:'limpieza', l:'Limpieza', dot:'d-gasto', corr:c=>c.lim}
 ];
-const LEGACY = {garrafa:'gastos', luz:'gastos', otros:'gastos'};
+const LEGACY = {gastos:'garrafa'};
 const uName = c => (UNIDADES.find(u=>u.codigo===c)||{}).nombre || '';
 const uLabel = c => c==='TODO' ? 'Todo BP' : c==='VARIAS' ? 'Varias Unidades' : `${c||''} ${uName(c)}`.trim();
 const unisDe = r => r.unidad==='VARIAS' ? (r.unidades||[]) : (r.unidad && r.unidad!=='TODO' ? [r.unidad] : []);
@@ -2784,19 +2793,34 @@ function calc(r){
   return {ing,gar,luz,lim,otr,gastos,base,fee,fondo,resto,ale,tomas,pf,pb,ps,extras,aparteX,totalInq:ing+aparteX};
 }
 function cobradoDe(r){ return r.cobrado!=null ? num(r.cobrado) : (r.cobros||[]).reduce((a,m)=>a+num(m.monto),0); }
-function repDe(r){
+function repDe(r, c){
   const o={}; CON.forEach(x=>o[x.k]=0);
   (r.extras||[]).forEach(e=>{ o['x_'+e.id]=0; });
-  if (r.rep){ Object.keys(o).forEach(k=>o[k]=num(r.rep[k])); return o; }
+  if (r.rep){
+    Object.keys(o).forEach(k=>o[k]=num(r.rep[k]));
+    /* cargas viejas con "Gastos" juntos: se reparten en garrafa, luz y otros */
+    const viejo = num(r.rep.gastos);
+    if (viejo>0 && r.rep.garrafa==null && r.rep.luz==null && r.rep.otros==null){
+      c = c || calc(r); let resto = viejo;
+      o.garrafa = Math.min(resto, c.gar); resto -= o.garrafa;
+      o.luz = Math.min(resto, c.luz); resto -= o.luz;
+      o.otros = resto;
+    }
+    return o;
+  }
   (r.repartos||[]).forEach(m=>{ const k=LEGACY[m.destino]||m.destino; if(k in o) o[k]+=num(m.monto); });
   return o;
 }
 function cuenta(r){
-  const c = calc(r), cobrado = cobradoDe(r), rep = repDe(r);
+  const c = calc(r), cobrado = cobradoDe(r), rep = repDe(r, c);
   const repartido = Object.values(rep).reduce((a,b)=>a+b,0);
   const items = CON.map(x=>{ const corr=x.corr(c); return {...x, corr, pag:rep[x.k], falta:corr-rep[x.k]}; });
   const extras = c.extras.map(e=>{ const k='x_'+e.id, pag=rep[k]||0; return {k, l:e.nombre, col:'x:'+norm(e.nombre), dot:'d-extra', corr:e.monto, pag, falta:e.monto-pag, modo:e.modo}; });
   return {c, cobrado, debe:c.totalInq-cobrado, repartido, caja:cobrado-repartido, items, extras, rep};
+}
+/* conceptos a mostrar: "Otros gastos" solo aparece si algún alquiler lo usa */
+function conVisibles(cuentas){
+  return CON.filter(x=>!x.opt || cuentas.some(k=>{ const i=k.items.find(z=>z.k===x.k); return i && (i.corr>EPS || i.pag>EPS); }));
 }
 function noches(r){
   if(!r.checkin||!r.checkout) return null;
@@ -2837,16 +2861,19 @@ function render(){
     $('#wrap').innerHTML = !ready ? '<div class="empty"><h3>Cargando alquileres…</h3></div>'
       : rows.length ? '<div class="empty"><h3>Ningún inquilino coincide con la búsqueda</h3></div>'
       : `<div class="empty"><h3>Todavía no hay alquileres de intermedia</h3>
-         <p>Tocá <b>+ Alquiler</b> y cargá el total y los gastos. Aparecen dos líneas: el total de cada concepto y lo que va pagado.</p>
+         <p>Tocá <b>+ Alquiler</b> y cargá el total y los gastos. Aparecen tres líneas: el total de cada concepto, lo que va pagado y lo pendiente.</p>
          <p>Después tocás la fila para anotar lo que te pagó el inquilino y lo que le repartiste a cada uno.</p></div>`;
     return;
   }
   const T = {ing:0, cob:0}; const TC = {}; CON.forEach(x=>TC[x.k]={corr:0,pag:0});
   const cuentas = list.map(r=>cuenta(r));
+  const CV = conVisibles(cuentas);
+  const pend = (corr, pag) => { const f = corr - pag; return { cls: f < -EPS ? 'st-over' : (f <= EPS ? (corr>EPS ? 'st-ok' : 'st-none') : 'st-pend'), txt: f < -EPS ? '−'+mil(-f) : mil(f) }; };
   const XC = []; const XT = {};
   cuentas.forEach(k=>k.extras.forEach(x=>{ if(!XT[x.col]){ XT[x.col]={corr:0,pag:0}; XC.push({col:x.col, l:x.l}); } XT[x.col].corr+=x.corr; XT[x.col].pag+=x.pag; }));
   const xRow = (k, which) => XC.map(xc=>{ const its=k.extras.filter(x=>x.col===xc.col); if(!its.length) return '<td></td>';
     const corr=its.reduce((a,x)=>a+x.corr,0), pag=its.reduce((a,x)=>a+x.pag,0);
+    if (which==='x'){ const pp=pend(corr,pag); return `<td class="${pp.cls}">${pp.txt}</td>`; }
     return which==='t' ? `<td class="st-es">${mil(corr)}</td>` : `<td class="${stCls(corr,pag)}" title="${stTip(xc.l,corr,pag)}">${mil(pag)}</td>`; }).join('');
   const body = list.map((r,gi)=>{
     const k = cuentas[gi];
@@ -2854,25 +2881,33 @@ function render(){
     k.items.forEach(i=>{ TC[i.k].corr+=i.corr; TC[i.k].pag+=i.pag; });
     const g = gi%2 ? 'g1' : 'g0';
     const cobCls = stCls(k.c.totalInq, k.cobrado);
+    const its = CV.map(x=>k.items.find(i=>i.k===x.k));
+    const pi = pend(k.c.totalInq, k.cobrado);
     return `<tr class="${g} r1" data-id="${esc(r.id)}" tabindex="0">
-      <td rowspan="2" title="${esc(r.inquilino)} · ${esc(rDetalle(r))} · ${esc(rango(r))}"><span class="n">${esc(rLabel(r))}</span><span class="m">${esc(r.inquilino)||'Sin nombre'} <span class="fx">${esc(rango(r))}</span></span></td>
+      <td rowspan="3" title="${esc(r.inquilino)} · ${esc(rDetalle(r))} · ${esc(rango(r))}"><span class="n">${esc(r.inquilino)||'Sin nombre'}<span class="fx">${esc(rango(r))}</span></span><span class="m">${esc(rLabel(r))}</span></td>
       <td class="lab">Total</td>
       <td class="st-es">${mil(k.c.totalInq)}</td>
-      ${k.items.map(i=>`<td class="st-es">${mil(i.corr)}</td>`).join('')}${xRow(k,'t')}
+      ${its.map(i=>`<td class="st-es">${mil(i.corr)}</td>`).join('')}${xRow(k,'t')}
     </tr>
     <tr class="${g} r2" data-id="${esc(r.id)}">
       <td class="lab">Pagado</td>
       <td class="${cobCls}" title="Cobrado al inquilino ${money(k.cobrado)} de ${money(k.c.totalInq)}">${mil(k.cobrado)}</td>
-      ${k.items.map(i=>`<td class="${stCls(i.corr,i.pag)}" title="${stTip(i.l,i.corr,i.pag)}">${mil(i.pag)}</td>`).join('')}${xRow(k,'p')}
+      ${its.map(i=>`<td class="${stCls(i.corr,i.pag)}" title="${stTip(i.l,i.corr,i.pag)}">${mil(i.pag)}</td>`).join('')}${xRow(k,'p')}
+    </tr>
+    <tr class="${g} r3" data-id="${esc(r.id)}">
+      <td class="lab">Pendiente</td>
+      <td class="${pi.cls}" title="Le falta pagar al inquilino">${pi.txt}</td>
+      ${its.map(i=>{ const pp=pend(i.corr,i.pag); return `<td class="${pp.cls}">${pp.txt}</td>`; }).join('')}${xRow(k,'x')}
     </tr>`;
   }).join('');
   $('#wrap').innerHTML = `<table class="num" style="min-width:${880+XC.length*90}px">
-    <colgroup><col class="c-alq"><col class="c-lab"><col>${CON.map(()=>'<col>').join('')}${XC.map(()=>'<col>').join('')}</colgroup>
-    <thead><tr><th>Unidad</th><th></th><th>Total alquiler</th>${CON.map(x=>`<th><i class="dot ${x.dot}"></i>${x.l}</th>`).join('')}${XC.map(x=>`<th><i class="dot d-extra"></i>${esc(x.l)}</th>`).join('')}</tr></thead>
+    <colgroup><col class="c-alq"><col class="c-lab"><col>${CV.map(()=>'<col>').join('')}${XC.map(()=>'<col>').join('')}</colgroup>
+    <thead><tr><th>Unidad</th><th></th><th>Total alquiler</th>${CV.map(x=>`<th><i class="dot ${x.dot}"></i>${x.l}</th>`).join('')}${XC.map(x=>`<th><i class="dot d-extra"></i>${esc(x.l)}</th>`).join('')}</tr></thead>
     <tbody>${body}</tbody>
     <tfoot>
-      <tr class="f1"><td rowspan="2">TOTAL · ${list.length}</td><td class="lab">Total</td><td>${mil(T.ing)}</td>${CON.map(x=>`<td>${mil(TC[x.k].corr)}</td>`).join('')}${XC.map(x=>`<td>${mil(XT[x.col].corr)}</td>`).join('')}</tr>
-      <tr class="f2"><td class="lab">Pagado</td><td class="${stCls(T.ing,T.cob)}">${mil(T.cob)}</td>${CON.map(x=>`<td class="${stCls(TC[x.k].corr,TC[x.k].pag)}">${mil(TC[x.k].pag)}</td>`).join('')}${XC.map(x=>`<td class="${stCls(XT[x.col].corr,XT[x.col].pag)}">${mil(XT[x.col].pag)}</td>`).join('')}</tr>
+      <tr class="f1"><td rowspan="3">TOTAL · ${list.length}</td><td class="lab">Total</td><td>${mil(T.ing)}</td>${CV.map(x=>`<td>${mil(TC[x.k].corr)}</td>`).join('')}${XC.map(x=>`<td>${mil(XT[x.col].corr)}</td>`).join('')}</tr>
+      <tr class="f2"><td class="lab">Pagado</td><td class="${stCls(T.ing,T.cob)}">${mil(T.cob)}</td>${CV.map(x=>`<td class="${stCls(TC[x.k].corr,TC[x.k].pag)}">${mil(TC[x.k].pag)}</td>`).join('')}${XC.map(x=>`<td class="${stCls(XT[x.col].corr,XT[x.col].pag)}">${mil(XT[x.col].pag)}</td>`).join('')}</tr>
+      <tr class="f3"><td class="lab">Pendiente</td>${[ [T.ing,T.cob], ...CV.map(x=>[TC[x.k].corr,TC[x.k].pag]), ...XC.map(x=>[XT[x.col].corr,XT[x.col].pag]) ].map(([a,b])=>{ const pp=pend(a,b); return `<td class="${pp.cls}">${pp.txt}</td>`; }).join('')}</tr>
     </tfoot>
   </table>`;
 }
@@ -2986,11 +3021,12 @@ function check(){
   if (debe < -EPS) out.errs.push(`Lo cobrado supera el total del alquiler en ${money(-debe)}.`);
   /* repartido */
   let rep=0;
-  const lista = [...CON.map(x=>({k:x.k, l:x.l, corr:x.corr(c)})), ...edExtras.map(e=>({k:'x_'+e.id, l:(e.nombre||'Ítem extra'), corr:num(e.monto)}))];
+  const lista = [...CON.map(x=>({k:x.k, l:x.l, corr:x.corr(c), opt:x.opt})), ...edExtras.map(e=>({k:'x_'+e.id, l:(e.nombre||'Ítem extra'), corr:num(e.monto)}))];
   edExtras.forEach(e=>{ if(num(e.monto)>0 && !String(e.nombre||'').trim()) out.errs.push('Poné el nombre del ítem extra.'); });
   lista.forEach(x=>{
     const corr = x.corr, pag = p.rep[x.k]||0, f = corr - pag; rep += pag;
     const row = ROOT.querySelector(`.pl[data-k="${x.k}"]`); if(!row) return;
+    row.hidden = !!x.opt && corr<=EPS && pag<=EPS;
     row.classList.toggle('over', f < -EPS);
     row.classList.toggle('done', corr>EPS && Math.abs(f)<=EPS);
     row.querySelector('.info').innerHTML = `Le corresponde <b>${money(corr)}</b> · ${f<-EPS?`<span class="st" style="color:var(--rojo)">te pasaste ${money(-f)}</span>`:(f<=EPS?(corr>EPS?'<span class="st" style="color:var(--c-ale)">✓ completo</span>':'—'):`falta <b>${money(f)}</b>`)}`;
@@ -3089,45 +3125,47 @@ window.__hojaIntermedia = async function(wb, ExcelJS){
     const list = rows.slice().sort((a,b)=>(a.checkin||'9').localeCompare(b.checkin||'9') || (a.createdAt||'').localeCompare(b.createdAt||'')), cuentas = list.map(r=>cuenta(r));
     const XC=[]; const seen={};
     cuentas.forEach(k=>k.extras.forEach(x=>{ if(!seen[x.col]){ seen[x.col]=1; XC.push({col:x.col,l:x.l}); } }));
-    const cols = [...CON.map(x=>({l:x.l, get:(k,w)=>{ const i=k.items.find(z=>z.k===x.k); return w==='t'?i.corr:i.pag; }})),
+    const cols = [...conVisibles(cuentas).map(x=>({l:x.l, get:(k,w)=>{ const i=k.items.find(z=>z.k===x.k); return w==='t'?i.corr:i.pag; }})),
                   ...XC.map(xc=>({l:xc.l, get:(k,w)=>{ const its=k.extras.filter(z=>z.col===xc.col); if(!its.length) return null; return its.reduce((a,z)=>a+(w==='t'?z.corr:z.pag),0); }}))];
     const ws = wb.addWorksheet('Tempo Intermedia', {views:[{state:'frozen', xSplit:3, ySplit:3}]});
-    const NAVY='FF1B2A4A', NAVYD='FF152238', GOLD='FFD4A94A', GREEN='FF1E7A45', RED='FFC0392B', GREY='FF8A93A3', ALT='FFF1F4F9';
+    const NAVY='FF1B2A4A', NAVYD='FF152238', GOLD='FFD4A94A', AMBER='FFE0AB2C', GREEN='FF1E7A45', RED='FFC0392B', GREY='FF8A93A3', ALT='FFF1F4F9';
     const ncol = 4 + cols.length;
-    ws.columns = [{width:22},{width:40},{width:9},{width:15}, ...cols.map(()=>({width:13}))];
+    ws.columns = [{width:40},{width:22},{width:10},{width:15}, ...cols.map(()=>({width:13}))];
     ws.mergeCells(1,1,1,ncol);
     const t = ws.getCell(1,1); t.value = 'Buen Puerto · Reparto temporada intermedia'; t.font={bold:true,size:14,color:{argb:NAVY}};
     ws.getRow(2).getCell(1).value = 'Al '+new Date().toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}); ws.getRow(2).getCell(1).font={italic:true,color:{argb:GREY}};
     const hdr = ws.getRow(3);
-    ['Unidad','Inquilino','','Total alquiler',...cols.map(c=>c.l)].forEach((v,i)=>{ const c=hdr.getCell(i+1); c.value=v; c.font={bold:true,color:{argb:GOLD}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.alignment={horizontal:'center',vertical:'middle'}; });
+    ['Inquilino','Unidad','','Total alquiler',...cols.map(c=>c.l)].forEach((v,i)=>{ const c=hdr.getCell(i+1); c.value=v; c.font={bold:true,color:{argb:GOLD}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.alignment={horizontal:'center',vertical:'middle'}; });
     hdr.height = 20;
     const stColor=(corr,pag)=>{ if(corr==null) return null; const f=corr-pag; if(corr<=EPS&&pag<=EPS) return GREY; if(f<-EPS) return RED; if(f<=EPS) return GREEN; return null; };
+    const pdColor=(corr,pag)=>{ const f=corr-pag; if(f<-EPS) return RED; if(f<=EPS) return corr>EPS?GREEN:GREY; return null; };
     const fmt='#,##0';
     let rn = 4;
     const T={ing:0,cob:0}, TT=cols.map(()=>({t:0,p:0}));
     list.forEach((r,gi)=>{
       const k=cuentas[gi]; const fill = gi%2 ? {type:'pattern',pattern:'solid',fgColor:{argb:ALT}} : null;
       T.ing+=k.c.totalInq; T.cob+=k.cobrado;
-      const r1=ws.getRow(rn), r2=ws.getRow(rn+1);
-      r1.getCell(1).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(1).note = unisDe(r).join(', '); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
-      ws.mergeCells(rn,1,rn+1,1); ws.mergeCells(rn,2,rn+1,2);
-      r1.getCell(1).font={bold:true}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
-      r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado';
-      [r1,r2].forEach(rr=>rr.getCell(3).font={italic:true,color:{argb:GREY}});
-      r1.getCell(4).value=k.c.totalInq; r2.getCell(4).value=k.cobrado;
-      const sc0=stColor(k.c.totalInq,k.cobrado); if(sc0) r2.getCell(4).font={color:{argb:sc0},bold:sc0!==GREY};
-      cols.forEach((c,i)=>{ const tv=c.get(k,'t'), pv=c.get(k,'p'); const c1=r1.getCell(5+i), c2=r2.getCell(5+i);
-        if (tv==null){ return; } c1.value=tv; c2.value=pv; TT[i].t+=tv; TT[i].p+=pv;
-        const sc=stColor(tv,pv); if(sc) c2.font={color:{argb:sc},bold:sc!==GREY}; });
-      for(let c=1;c<=ncol;c++){ [r1,r2].forEach(rr=>{ const cell=rr.getCell(c); if(c>=4) cell.numFmt=fmt; if(fill) cell.fill=fill; }); r2.getCell(c).border={bottom:{style:'thin',color:{argb:'FFB8C2D6'}}}; }
-      rn+=2;
+      const r1=ws.getRow(rn), r2=ws.getRow(rn+1), r3=ws.getRow(rn+2);
+      r1.getCell(1).value = (r.inquilino||'') + '  ·  ' + rango(r); r1.getCell(2).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(2).note = unisDe(r).join(', ');
+      ws.mergeCells(rn,1,rn+2,1); ws.mergeCells(rn,2,rn+2,2);
+      r1.getCell(1).font={bold:true}; r1.getCell(2).font={color:{argb:GREY}}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
+      r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado'; r3.getCell(3).value='Pendiente';
+      [r1,r2,r3].forEach(rr=>rr.getCell(3).font={italic:true,color:{argb:GREY}});
+      const put=(col,tv,pv)=>{ r1.getCell(col).value=tv; r2.getCell(col).value=pv; r3.getCell(col).value=tv-pv;
+        const sc=stColor(tv,pv); if(sc) r2.getCell(col).font={color:{argb:sc},bold:sc!==GREY};
+        const pc=pdColor(tv,pv); if(pc) r3.getCell(col).font={color:{argb:pc},bold:pc!==GREY}; };
+      put(4, k.c.totalInq, k.cobrado);
+      cols.forEach((c,i)=>{ const tv=c.get(k,'t'), pv=c.get(k,'p'); if (tv==null) return; put(5+i, tv, pv); TT[i].t+=tv; TT[i].p+=pv; });
+      for(let c=1;c<=ncol;c++){ [r1,r2,r3].forEach(rr=>{ const cell=rr.getCell(c); if(c>=4) cell.numFmt=fmt; if(fill) cell.fill=fill; }); r3.getCell(c).border={bottom:{style:'thin',color:{argb:'FFB8C2D6'}}}; }
+      rn+=3;
     });
-    const f1=ws.getRow(rn), f2=ws.getRow(rn+1);
-    f1.getCell(1).value=`TOTAL · ${list.length} alquiler${list.length===1?'':'es'}`; ws.mergeCells(rn,1,rn+1,2);
-    f1.getCell(3).value='Total'; f2.getCell(3).value='Pagado';
-    f1.getCell(4).value=T.ing; f2.getCell(4).value=T.cob;
-    cols.forEach((c,i)=>{ f1.getCell(5+i).value=TT[i].t; f2.getCell(5+i).value=TT[i].p; });
-    for(let c=1;c<=ncol;c++){ [f1,f2].forEach(rr=>{ const cell=rr.getCell(c); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVYD}}; cell.font={bold:true,color:{argb:rr===f1?GOLD:'FFFFFFFF'},italic:c===3}; if(c>=4) cell.numFmt=fmt; }); }
+    const f1=ws.getRow(rn), f2=ws.getRow(rn+1), f3=ws.getRow(rn+2);
+    f1.getCell(1).value=`TOTAL · ${list.length} alquiler${list.length===1?'':'es'}`; ws.mergeCells(rn,1,rn+2,2);
+    f1.getCell(3).value='Total'; f2.getCell(3).value='Pagado'; f3.getCell(3).value='Pendiente';
+    const fput=(col,tv,pv)=>{ f1.getCell(col).value=tv; f2.getCell(col).value=pv; f3.getCell(col).value=tv-pv; };
+    fput(4, T.ing, T.cob);
+    cols.forEach((c,i)=>fput(5+i, TT[i].t, TT[i].p));
+    for(let c=1;c<=ncol;c++){ [f1,f2,f3].forEach(rr=>{ const cell=rr.getCell(c); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVYD}}; cell.font={bold:true,color:{argb:rr===f1?GOLD:rr===f3?AMBER:'FFFFFFFF'},italic:c===3}; if(c>=4) cell.numFmt=fmt; }); }
     f1.getCell(1).alignment={vertical:'middle'};
     for(let c=1;c<=ncol;c++) f1.getCell(c).border={top:{style:'medium',color:{argb:GOLD}}};
 };
@@ -3139,46 +3177,48 @@ $('#btnCsv').addEventListener('click', async ()=>{
     const list = rows.slice().sort((a,b)=>(a.checkin||'9').localeCompare(b.checkin||'9') || (a.createdAt||'').localeCompare(b.createdAt||'')), cuentas = list.map(r=>cuenta(r));
     const XC=[]; const seen={};
     cuentas.forEach(k=>k.extras.forEach(x=>{ if(!seen[x.col]){ seen[x.col]=1; XC.push({col:x.col,l:x.l}); } }));
-    const cols = [...CON.map(x=>({l:x.l, get:(k,w)=>{ const i=k.items.find(z=>z.k===x.k); return w==='t'?i.corr:i.pag; }})),
+    const cols = [...conVisibles(cuentas).map(x=>({l:x.l, get:(k,w)=>{ const i=k.items.find(z=>z.k===x.k); return w==='t'?i.corr:i.pag; }})),
                   ...XC.map(xc=>({l:xc.l, get:(k,w)=>{ const its=k.extras.filter(z=>z.col===xc.col); if(!its.length) return null; return its.reduce((a,z)=>a+(w==='t'?z.corr:z.pag),0); }}))];
     const wb = new ExcelJS.Workbook(); wb.creator='Buen Puerto';
     const ws = wb.addWorksheet('Intermedia', {views:[{state:'frozen', xSplit:3, ySplit:3}]});
-    const NAVY='FF1B2A4A', NAVYD='FF152238', GOLD='FFD4A94A', GREEN='FF1E7A45', RED='FFC0392B', GREY='FF8A93A3', ALT='FFF1F4F9';
+    const NAVY='FF1B2A4A', NAVYD='FF152238', GOLD='FFD4A94A', AMBER='FFE0AB2C', GREEN='FF1E7A45', RED='FFC0392B', GREY='FF8A93A3', ALT='FFF1F4F9';
     const ncol = 4 + cols.length;
-    ws.columns = [{width:22},{width:40},{width:9},{width:15}, ...cols.map(()=>({width:13}))];
+    ws.columns = [{width:40},{width:22},{width:10},{width:15}, ...cols.map(()=>({width:13}))];
     ws.mergeCells(1,1,1,ncol);
     const t = ws.getCell(1,1); t.value = 'Buen Puerto · Reparto temporada intermedia'; t.font={bold:true,size:14,color:{argb:NAVY}};
     ws.getRow(2).getCell(1).value = 'Al '+new Date().toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'}); ws.getRow(2).getCell(1).font={italic:true,color:{argb:GREY}};
     const hdr = ws.getRow(3);
-    ['Unidad','Inquilino','','Total alquiler',...cols.map(c=>c.l)].forEach((v,i)=>{ const c=hdr.getCell(i+1); c.value=v; c.font={bold:true,color:{argb:GOLD}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.alignment={horizontal:'center',vertical:'middle'}; });
+    ['Inquilino','Unidad','','Total alquiler',...cols.map(c=>c.l)].forEach((v,i)=>{ const c=hdr.getCell(i+1); c.value=v; c.font={bold:true,color:{argb:GOLD}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; c.alignment={horizontal:'center',vertical:'middle'}; });
     hdr.height = 20;
     const stColor=(corr,pag)=>{ if(corr==null) return null; const f=corr-pag; if(corr<=EPS&&pag<=EPS) return GREY; if(f<-EPS) return RED; if(f<=EPS) return GREEN; return null; };
+    const pdColor=(corr,pag)=>{ const f=corr-pag; if(f<-EPS) return RED; if(f<=EPS) return corr>EPS?GREEN:GREY; return null; };
     const fmt='#,##0';
     let rn = 4;
     const T={ing:0,cob:0}, TT=cols.map(()=>({t:0,p:0}));
     list.forEach((r,gi)=>{
       const k=cuentas[gi]; const fill = gi%2 ? {type:'pattern',pattern:'solid',fgColor:{argb:ALT}} : null;
       T.ing+=k.c.totalInq; T.cob+=k.cobrado;
-      const r1=ws.getRow(rn), r2=ws.getRow(rn+1);
-      r1.getCell(1).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(1).note = unisDe(r).join(', '); r1.getCell(2).value = (r.inquilino||'') + '  ·  ' + rango(r);
-      ws.mergeCells(rn,1,rn+1,1); ws.mergeCells(rn,2,rn+1,2);
-      r1.getCell(1).font={bold:true}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
-      r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado';
-      [r1,r2].forEach(rr=>rr.getCell(3).font={italic:true,color:{argb:GREY}});
-      r1.getCell(4).value=k.c.totalInq; r2.getCell(4).value=k.cobrado;
-      const sc0=stColor(k.c.totalInq,k.cobrado); if(sc0) r2.getCell(4).font={color:{argb:sc0},bold:sc0!==GREY};
-      cols.forEach((c,i)=>{ const tv=c.get(k,'t'), pv=c.get(k,'p'); const c1=r1.getCell(5+i), c2=r2.getCell(5+i);
-        if (tv==null){ return; } c1.value=tv; c2.value=pv; TT[i].t+=tv; TT[i].p+=pv;
-        const sc=stColor(tv,pv); if(sc) c2.font={color:{argb:sc},bold:sc!==GREY}; });
-      for(let c=1;c<=ncol;c++){ [r1,r2].forEach(rr=>{ const cell=rr.getCell(c); if(c>=4) cell.numFmt=fmt; if(fill) cell.fill=fill; }); r2.getCell(c).border={bottom:{style:'thin',color:{argb:'FFB8C2D6'}}}; }
-      rn+=2;
+      const r1=ws.getRow(rn), r2=ws.getRow(rn+1), r3=ws.getRow(rn+2);
+      r1.getCell(1).value = (r.inquilino||'') + '  ·  ' + rango(r); r1.getCell(2).value = rLabel(r); if (r.unidad==='VARIAS') r1.getCell(2).note = unisDe(r).join(', ');
+      ws.mergeCells(rn,1,rn+2,1); ws.mergeCells(rn,2,rn+2,2);
+      r1.getCell(1).font={bold:true}; r1.getCell(2).font={color:{argb:GREY}}; [1,2].forEach(c=>r1.getCell(c).alignment={vertical:'middle'});
+      r1.getCell(3).value='Total'; r2.getCell(3).value='Pagado'; r3.getCell(3).value='Pendiente';
+      [r1,r2,r3].forEach(rr=>rr.getCell(3).font={italic:true,color:{argb:GREY}});
+      const put=(col,tv,pv)=>{ r1.getCell(col).value=tv; r2.getCell(col).value=pv; r3.getCell(col).value=tv-pv;
+        const sc=stColor(tv,pv); if(sc) r2.getCell(col).font={color:{argb:sc},bold:sc!==GREY};
+        const pc=pdColor(tv,pv); if(pc) r3.getCell(col).font={color:{argb:pc},bold:pc!==GREY}; };
+      put(4, k.c.totalInq, k.cobrado);
+      cols.forEach((c,i)=>{ const tv=c.get(k,'t'), pv=c.get(k,'p'); if (tv==null) return; put(5+i, tv, pv); TT[i].t+=tv; TT[i].p+=pv; });
+      for(let c=1;c<=ncol;c++){ [r1,r2,r3].forEach(rr=>{ const cell=rr.getCell(c); if(c>=4) cell.numFmt=fmt; if(fill) cell.fill=fill; }); r3.getCell(c).border={bottom:{style:'thin',color:{argb:'FFB8C2D6'}}}; }
+      rn+=3;
     });
-    const f1=ws.getRow(rn), f2=ws.getRow(rn+1);
-    f1.getCell(1).value=`TOTAL · ${list.length} alquiler${list.length===1?'':'es'}`; ws.mergeCells(rn,1,rn+1,2);
-    f1.getCell(3).value='Total'; f2.getCell(3).value='Pagado';
-    f1.getCell(4).value=T.ing; f2.getCell(4).value=T.cob;
-    cols.forEach((c,i)=>{ f1.getCell(5+i).value=TT[i].t; f2.getCell(5+i).value=TT[i].p; });
-    for(let c=1;c<=ncol;c++){ [f1,f2].forEach(rr=>{ const cell=rr.getCell(c); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVYD}}; cell.font={bold:true,color:{argb:rr===f1?GOLD:'FFFFFFFF'},italic:c===3}; if(c>=4) cell.numFmt=fmt; }); }
+    const f1=ws.getRow(rn), f2=ws.getRow(rn+1), f3=ws.getRow(rn+2);
+    f1.getCell(1).value=`TOTAL · ${list.length} alquiler${list.length===1?'':'es'}`; ws.mergeCells(rn,1,rn+2,2);
+    f1.getCell(3).value='Total'; f2.getCell(3).value='Pagado'; f3.getCell(3).value='Pendiente';
+    const fput=(col,tv,pv)=>{ f1.getCell(col).value=tv; f2.getCell(col).value=pv; f3.getCell(col).value=tv-pv; };
+    fput(4, T.ing, T.cob);
+    cols.forEach((c,i)=>fput(5+i, TT[i].t, TT[i].p));
+    for(let c=1;c<=ncol;c++){ [f1,f2,f3].forEach(rr=>{ const cell=rr.getCell(c); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVYD}}; cell.font={bold:true,color:{argb:rr===f1?GOLD:rr===f3?AMBER:'FFFFFFFF'},italic:c===3}; if(c>=4) cell.numFmt=fmt; }); }
     f1.getCell(1).alignment={vertical:'middle'};
     for(let c=1;c<=ncol;c++) f1.getCell(c).border={top:{style:'medium',color:{argb:GOLD}}};
     const buf = await wb.xlsx.writeBuffer();
