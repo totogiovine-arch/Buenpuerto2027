@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1935">
+<meta name="bp-version" content="20261104-2000">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -380,25 +380,25 @@ function kpis(filas){
 const num = n => f2(n);
 const dec2 = n => f2(n);
 const corto = n => n.replace(/^Puerto de la /,"").replace(/^Puerto de /,"").replace(/^Puerto /,"");
-const sem1 = n => n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:1});
+const sem1 = n => f2(n);
 function vistaPorUnidad(filas){
   let tSem=0,tDev=0,tPag=0,tDias=0;
   const cuerpo = filas.map(f=>{
     const dias=f.conf.length; tDias+=dias; tSem+=dias/7; tDev+=f.devengado; tPag+=f.pagado;
     return `<tr data-det="${f.un.i}" class="${!f.valor&&dias?"falta":""}">
       <td><b class="nm">${esc(corto(f.un.nombre))}</b><small>${f.un.codigo}</small></td>
-      <td>${sem1(dias/7)}<small>${dias} día${dias===1?"":"s"}</small></td>
-      <td>${f.valor?dec2(f.valor/7):"—"}</td>
+      <td>${sem1(dias/7)}</td>
+      <td>${f.valor?dec2(f.valor):"—"}</td>
       <td>${num(f.devengado)}</td><td>${num(f.pagado)}</td>
       <td class="pend ${f.pend<=0?"ok":""}">${num(f.pend)}</td></tr>`;
   }).join("");
   const sinValor = filas.filter(f=>f.conf.length && !f.valor).length;
   return kpis(filas)+
    (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Análisis").</div>`:"")+
-   `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. Si viene un invitado del propietario, tildalo ahí y no se suma. En temporada, 7 días son una semana. Valores en pesos.</div>
-   <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x día</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
-   <tfoot><tr><td>Total</td><td>${sem1(tSem)}<small>${tDias} días</small></td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`+
-   (filas.some(f=>f.inv.length) ? `<p class="note">Invitados de propietarios (no se pagan): ${filas.filter(f=>f.inv.length).map(f=>`${f.un.codigo} ${f.inv.length} día${f.inv.length>1?"s":""}`).join(" · ")}.</p>` : "");
+   `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. Si viene un invitado del propietario, tildalo ahí y no se suma. Se paga por semana alquilada: lo que no completa la semana cuenta en proporción (por ejemplo 3/7). Valores en pesos.</div>
+   <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x sem</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
+   <tfoot><tr><td>Total</td><td>${sem1(tSem)}</td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`+
+   (filas.some(f=>f.inv.length) ? `<p class="note">Invitados de propietarios (no se pagan): ${filas.filter(f=>f.inv.length).map(f=>`${f.un.codigo} ${sem1(f.inv.length/7)} sem`).join(" · ")}.</p>` : "");
 }
 
 function filaDetalle(u){ return calcular().find(x=>x.un.i===u); }
@@ -426,15 +426,14 @@ function pintarDetalle(u){
   $("#dtTitulo").innerHTML = `${f.un.codigo} · ${esc(f.un.nombre)}<small>${esc(f.prop)} · ${per}</small>`;
   const ests = estanciasCompletas(u,f.valor);
   const est = ests.length ? ests.map(e=>`<div class="es ${e.exento?"ex":""}"><div class="en">${esc(e.nombre)}</div><div class="em">${e.lapiz||e.exento?"—":"$ "+num(e.monto)}</div>
-      <div class="ef">${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"}${e.lapiz?" · lápiz":""}</div>
+      <div class="ef">${fcorta(e.ini)} → ${fcorta(e.fin)} · ${sem1(e.diasP/7)} sem${e.lapiz?" · lápiz":""}</div>
       ${e.lapiz?"<span></span>":`<label class="chk"><input type="checkbox" data-ini="${e.ini}" data-ult="${e.ultima}" data-nom="${esc(e.nombre)}" ${(state.pendInv&&(e.ini+"|"+e.ultima) in state.pendInv ? state.pendInv[e.ini+"|"+e.ultima].on : e.exento)?"checked":""}>Invitado del propietario</label>`}</div>`).join("") : '<div class="ef">Sin alquileres en el período</div>';
   const pg = pagos.length ? pagos.map(p=>`<tr><td>${p.fecha.split("-").reverse().join("/")}${p.mes?" · "+nombreMes(p.mes):""}${p.nota?"<br><small>"+esc(p.nota)+"</small>":""}</td><td class="r">$ ${num(p.monto)}</td></tr>`).join("") : '<tr><td><small>Todavía no hay pagos</small></td><td></td></tr>';
   const inv = f.inv.length;
   $("#dtCuerpo").innerHTML = `
     <table class="dt">
-      <tr><td>Semanas que se pagan</td><td class="r">${sem1(dias/7)} (${dias} día${dias===1?"":"s"})</td></tr>
-      ${inv?`<tr><td>Invitados del propietario</td><td class="r">${inv} día${inv===1?"":"s"} · no se pagan</td></tr>`:""}
-      <tr><td>Precio de luz por día</td><td class="r">${f.valor?"$ "+dec2(f.valor/7):"sin cargar"}</td></tr>
+      <tr><td>Semanas que se pagan</td><td class="r">${sem1(dias/7)}</td></tr>
+      ${inv?`<tr><td>Invitados del propietario</td><td class="r">${sem1(inv/7)} sem · no se pagan</td></tr>`:""}
       <tr><td>Precio por semana</td><td class="r">${f.valor?"$ "+num(f.valor):"sin cargar"}</td></tr>
       <tr class="t"><td>Total a pagar</td><td class="r">$ ${num(f.devengado)}</td></tr>
       <tr><td>Pagado</td><td class="r">$ ${num(f.pagado)}</td></tr>
@@ -462,9 +461,9 @@ function textoDetalle(u){
   const per = state.periodo==="todo" ? "todo el período" : nombreMes(state.periodo);
   const dias=f.conf.length;
   const l=[`*${f.un.codigo} ${f.un.nombre}* — luz por consumo de inquilinos (${per})`,`Propietario: ${f.prop}`,"",
-    `Semanas que se pagan: ${sem1(dias/7)} (${dias} día${dias===1?"":"s"})`,
-    f.valor?`Precio de luz: $ ${dec2(f.valor/7)} por día ($ ${num(f.valor)} por semana)`:"Precio de luz: sin cargar","","Alquileres:"];
-  estanciasCompletas(u,f.valor).filter(e=>!e.lapiz).forEach(e=>l.push(`• ${e.nombre}: ${fcorta(e.ini)} al ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"} → ${e.exento?"invitado del propietario, no se paga":"$ "+num(e.monto)}`));
+    `Semanas que se pagan: ${sem1(dias/7)}`,
+    f.valor?`Precio de luz: $ ${num(f.valor)} por semana`:"Precio de luz: sin cargar","","Alquileres:"];
+  estanciasCompletas(u,f.valor).filter(e=>!e.lapiz).forEach(e=>l.push(`• ${e.nombre}: ${fcorta(e.ini)} al ${fcorta(e.fin)} · ${sem1(e.diasP/7)} sem → ${e.exento?"invitado del propietario, no se paga":"$ "+num(e.monto)}`));
   l.push("",`Total a pagar: $ ${num(f.devengado)}`,`Pagado: $ ${num(f.pagado)}`,`${f.pend<0?"Saldo a favor":"Saldo pendiente"}: $ ${num(Math.abs(f.pend))}`);
   return l.join("\n");
 }
@@ -474,7 +473,7 @@ function vistaUnidades(filas){
   const lap = filas.reduce((a,f)=>a+f.lap.length,0);
   let h = kpis(filas);
   if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana. Cargalo abajo de todo en la solapa "Análisis".</div>`;
-  if(lap) h += `<div class="note">${lap} día${lap>1?"s":""} en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
+  if(lap) h += `<div class="note">${sem1(lap/7)} semanas en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
   h += `<label class="sw"><input type="checkbox" id="swReservas" ${state.verReservas?"checked":""}> Mostrar las reservas de cada unidad</label>`;
   const grupos = {};
   filas.forEach(f=>{ (grupos[f.prop] ||= []).push(f); });
@@ -484,15 +483,15 @@ function vistaUnidades(filas){
     h += `<div class="owner"><h2>${esc(prop)}</h2><span class="tot">A pagar <b class="num">${money(dev)}</b> · Pagado <b class="num">${money(pag)}</b> · Pendiente <b class="num">${money(dev-pag)}</b></span></div>`;
     const filasTxt = g.map(f=>{
       const res = state.verReservas ? `<tr class="resv"><td colspan="5">${
-        estanciasCompletas(f.un.i,f.valor).length ? estanciasCompletas(f.un.i,f.valor).map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"}${e.lapiz?" · lápiz":""}</em>${e.exento?` <span class="inv">invitación propietario</span>`:""}</span><span class="num">${e.lapiz||e.exento?"—":num(e.monto)}</span></div>`).join("") : "<div><em>Sin alquileres</em></div>"}</td></tr>` : "";
+        estanciasCompletas(f.un.i,f.valor).length ? estanciasCompletas(f.un.i,f.valor).map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${sem1(e.diasP/7)} sem${e.lapiz?" · lápiz":""}</em>${e.exento?` <span class="inv">invitación propietario</span>`:""}</span><span class="num">${e.lapiz||e.exento?"—":num(e.monto)}</span></div>`).join("") : "<div><em>Sin alquileres</em></div>"}</td></tr>` : "";
       return `<tr class="${!f.valor&&f.conf.length?"falta":""}"><td><b class="nm">${esc(corto(f.un.nombre))}</b><small>${f.un.codigo}</small></td>
-        <td>${sem1(f.conf.length/7)}<small>${f.conf.length} día${f.conf.length===1?"":"s"}</small></td>
+        <td>${sem1(f.conf.length/7)}</td>
         <td>${num(f.devengado)}</td><td>${num(f.pagado)}</td><td class="pend ${f.pend<=0?"ok":""}">${num(f.pend)}</td></tr>${res}`;
     }).join("");
     h += `<div class="tw"><table class="uni prop"><thead><tr><th>Unidad</th><th>Sem.</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${filasTxt}</tbody>
-      <tfoot><tr><td>Total</td><td>${sem1(dias/7)}<small>${dias} días</small></td><td>${num(dev)}</td><td>${num(pag)}</td><td>${num(dev-pag)}</td></tr></tfoot></table></div>`;
+      <tfoot><tr><td>Total</td><td>${sem1(dias/7)}</td><td>${num(dev)}</td><td>${num(pag)}</td><td>${num(dev-pag)}</td></tr></tfoot></table></div>`;
   }
-  h += `<p class="note" style="margin-top:18px">Se cuenta cada día alquilado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. Los pagos se cargan con el botón "+ Pago" de arriba.</p>`;
+  h += `<p class="note" style="margin-top:18px">Se cuenta cada alquiler cargado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. Los pagos se cargan con el botón "+ Pago" de arriba.</p>`;
   return h;
 }
 
@@ -513,13 +512,13 @@ function vistaPagos(){
 function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
   const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
-    <p class="mut">Es lo que se le reintegra al propietario por cada semana alquilada, igual para todas las unidades. Al cambiarlo se recalcula toda la app (se divide por 7 para pagar por día).</p>
+    <p class="mut">Es lo que se le reintegra al propietario por cada semana alquilada, igual para todas las unidades. Al cambiarlo se recalcula toda la app (si un alquiler no completa la semana, se paga en proporción).</p>
     <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="text" inputmode="decimal" autocomplete="off" value="${(state.luz.valorSemana||(vals.length===1?vals[0]:0))?f2(state.luz.valorSemana||vals[0]):""}" placeholder="0,00"></div>`;
   const actual = vals.length===1 ? (vals[0]?`${money(vals[0])} por semana, igual para las 18 unidades`:"todavía sin cargar")
                : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
   return `
   <div class="an"><h2>Valor cargado hoy en la app</h2>
-    <p><b>${actual}</b>. Se divide por 7 y se paga por día alquilado.</p>
+    <p><b>${actual}</b>. Si un alquiler no completa la semana, se paga en proporción.</p>
     <p class="mut">Fuente: informe "Estimación consumo eléctrico Temporada 2027" (130 semanas alquiladas al 27/10/2026, del 19/12 al 6/3). Si cambian las tarifas o las reservas, hay que recalcularlo.</p></div>
 
   <div class="an"><h2>¿Alcanza lo que cobrás para pagar la luz?</h2>
@@ -552,7 +551,7 @@ function vistaAnalisis(filas){
       <li><b>Un monto único para todas.</b> Las unidades de mucho consumo (Pirámides, Deseado y Caleta, que comparten medidores) quedan cobrando de menos, y las de poco consumo de más. Pirámides sola pesa $ 395.000,00 en el informe.</li>
       <li><b>Suba de tarifa.</b> El kWh de $ 392,00 es el de septiembre 2026. Con un 20% de aumento, el reintegro sube unos $ 406.000,00.</li>
       <li><b>Unidades estimadas.</b> Nuevo (como Blest), Jaramillo y Canoa (promedio de Madryn e Iguazú), Frutos, Piray y Epuyén (promedio de Esmeralda y San Carlos) no tienen datos propios.</li>
-      <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y días sueltos, por eso su total es mayor al del informe.</li>
+      <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y alquileres sueltos, por eso su total es mayor al del informe.</li>
       <li><b>Subir el monto.</b> Cada $ 1.000,00 más por semana suma unos $ 130.000,00 a lo que se paga en las 130 semanas.</li>
     </ul></div>`+entrada;
 }
@@ -619,7 +618,7 @@ function perResumen(){ return state.periodo==="todo" ? "Temporada 2026/27" : nom
 function textoPropietario(o){
   const l=[`*${o.prop}*`,`Luz por consumo de inquilinos · ${perResumen()}`,""];
   o.filas.forEach(f=>{
-    l.push(`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} día${f.conf.length===1?"":"s"} (${sem1(f.conf.length/7)} sem) → ${money(f.devengado)}${f.inv.length?` · ${f.inv.length} de invitados, no se pagan`:""}`);
+    l.push(`• ${f.un.codigo} ${f.un.nombre}: ${sem1(f.conf.length/7)} sem → ${money(f.devengado)}${f.inv.length?` · ${sem1(f.inv.length/7)} sem de invitados, no se pagan`:""}`);
   });
   l.push("",`Total a pagar: ${money(o.dev)}`);
   if(o.pag) l.push(`Ya pagado: ${money(o.pag)}`);
@@ -636,8 +635,8 @@ function pintarResumen(){
   const sel = state.rsSel==="todos" ? datos : datos.filter(d=>d.prop===state.rsSel);
   $("#rsCard").innerHTML = sel.map(o=>`<div class="rc" style="margin-bottom:10px">
     <div class="top"><b>${esc(o.prop)}</b><span>Luz por consumo de inquilinos · ${perResumen()}</span></div>
-    <div class="big"><div><small>${o.dev-o.pag<0?"Saldo a favor":"Saldo a pagar"}</small><strong>${money(Math.abs(o.dev-o.pag))}</strong></div><em>${o.dias} días alquilados<br>${sem1(o.dias/7)} semanas</em></div>
-    ${o.filas.map(f=>`<div class="row"><div>${f.un.codigo} · ${esc(corto(f.un.nombre))}<small>${f.conf.length} día${f.conf.length===1?"":"s"} · ${sem1(f.conf.length/7)} sem${f.inv.length?` · ${f.inv.length} invitado${f.inv.length>1?"s":""} (no se paga)`:""}</small></div><div class="m">${money(f.devengado)}</div></div>`).join("")}
+    <div class="big"><div><small>${o.dev-o.pag<0?"Saldo a favor":"Saldo a pagar"}</small><strong>${money(Math.abs(o.dev-o.pag))}</strong></div><em>${sem1(o.dias/7)} semanas<br>alquiladas</em></div>
+    ${o.filas.map(f=>`<div class="row"><div>${f.un.codigo} · ${esc(corto(f.un.nombre))}<small>${sem1(f.conf.length/7)} sem${f.inv.length?` · ${sem1(f.inv.length/7)} sem de invitados (no se paga)`:""}</small></div><div class="m">${money(f.devengado)}</div></div>`).join("")}
     <div class="tot"><div>Total<b>${money(o.dev)}</b></div><div>Pagado<b>${money(o.pag)}</b></div><div class="sd">Saldo<b>${money(o.dev-o.pag)}</b></div></div>
   </div>`).join("");
   $("#rsTexto").value = state.rsSel==="todos" ? datos.map(textoPropietario).join("\n\n———\n\n") : textoPropietario(sel[0]);
