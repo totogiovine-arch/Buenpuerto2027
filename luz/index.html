@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1710">
+<meta name="bp-version" content="20261104-1740">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -42,6 +42,15 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .kpi.pend b{color:var(--gold-soft)}
 .kpi.ok b{color:var(--ok)}
 .note{font-size:11.5px;color:var(--muted);margin:6px 0}
+.sw{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0}
+.sw input{width:18px;height:18px;accent-color:var(--gold)}
+table.uni.prop tr.resv td{padding:2px 8px 8px;background:var(--bg-alt);position:static}
+table.uni.prop .resv div{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:3px 0;color:#dbe3f5}
+table.uni.prop .resv div>span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}table.uni.prop .resv .num{flex:none;padding-right:2px}
+table.uni.prop .resv em{font-style:normal;color:var(--muted)}
+table.uni.prop .resv .lap{opacity:.6}
+.vlbl{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+#valorSemana{width:100%;border:1px solid var(--gold);border-radius:10px;padding:10px;background:var(--bg-alt);color:#fff;font-size:16px;font-weight:700}
 .owner{margin:18px 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:6px}
 .owner h2{margin:0;font-size:14px;color:var(--gold)}
 .owner .tot{font-size:12px;color:var(--muted)}
@@ -53,6 +62,7 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .u h3 small{font-size:11px;color:var(--muted);font-weight:500}
 .tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 table.uni{width:100%;border-collapse:collapse;font-size:13px}
+@media (max-width:520px){table.uni.prop th:nth-child(1){width:26%}table.uni.prop th:nth-child(2){width:14%}table.uni.prop th:nth-child(3){width:22%}table.uni.prop th:nth-child(4){width:19%}table.uni.prop th:nth-child(5){width:19%}}
 @media (max-width:520px){table.uni{font-size:11.5px;table-layout:fixed}table.uni th:nth-child(1){width:22%}table.uni th:nth-child(2){width:12%}table.uni th:nth-child(3){width:15%}table.uni th:nth-child(4){width:18%}table.uni th:nth-child(5){width:15%}table.uni th:nth-child(6){width:18%}table.uni th{padding:8px 3px;font-size:9px;letter-spacing:0}table.uni td{padding:8px 3px}table.uni th:first-child,table.uni td:first-child{padding-left:8px;white-space:nowrap}table.uni td small{font-size:9.5px}}
 table.uni th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.uni th:first-child,table.uni td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1}
@@ -159,7 +169,6 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
   <button data-tab="porunidad" class="on">Unidades</button>
   <button data-tab="unidades">Propietarios</button>
   <button data-tab="pagos">Pagos</button>
-  <button data-tab="valores">Valores</button>
   <button data-tab="analisis">Análisis</button>
 </nav>
 <main id="main"><div class="empty">Cargando reservas…</div></main>
@@ -228,7 +237,7 @@ const iso = ms => new Date(ms).toISOString().slice(0,10);
 const fcorta = f => f.slice(8,10)+"/"+f.slice(5,7);
 const hoyISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 
-const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{},exentos:{}}, luzCargado:false, errorLuz:false,
+const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{},exentos:{},valorSemana:0},verReservas:false, luzCargado:false, errorLuz:false,
                 periodo:"todo", tab:"porunidad", abiertas:{} };
 let fb = null;
 
@@ -257,7 +266,7 @@ function escuchar(){
   });
   fb.onSnapshot(fb.doc(fb.db,COL,DOC_LUZ), snap=>{
     const d = snap.exists() ? snap.data() : {};
-    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{}, exentos:d.exentos||{} };
+    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{}, exentos:d.exentos||{}, valorSemana:Number(d.valorSemana)||0 };
     state.luzCargado = true; render();
     if($("#dlgDetalle").open) pintarDetalle(state.detalleU);
   }, ()=>{ state.errorLuz = true; render(); });
@@ -298,7 +307,7 @@ function calcular(){
     .map(n=>({...n, exento:esExento(n.u,n.fecha)}));
   const porU = UNIDADES.map(un=>{
     const cfg = state.luz.unidades[un.i]||{};
-    const valor = Number(cfg.valor)||0;
+    const valor = state.luz.valorSemana || Number(cfg.valor)||0;
     const mias = noches.filter(n=>n.u===un.i).sort((a,b)=>a.fecha<b.fecha?-1:1);
     const conf = mias.filter(n=>!n.lapiz && !n.exento), inv = mias.filter(n=>!n.lapiz && n.exento), lap = mias.filter(n=>n.lapiz);
     const devengado = Math.round(conf.length*valor/7);
@@ -337,7 +346,7 @@ function render(){
   const ready = state.luzCargado && Object.keys(state.cargado).length>=DOCS_MES.length+1;
   if(!ready && !state.errorLuz && !state.errorLectura){ $("#main").innerHTML='<div class="empty">Cargando reservas…</div>'; return; }
   const filas = calcular();
-  $("#main").innerHTML = state.tab==="porunidad" ? vistaPorUnidad(filas) : state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : state.tab==="valores" ? vistaValores(filas) : vistaAnalisis(filas);
+  $("#main").innerHTML = state.tab==="porunidad" ? vistaPorUnidad(filas) : state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : vistaAnalisis(filas);
 }
 
 function kpis(filas){
@@ -365,7 +374,7 @@ function vistaPorUnidad(filas){
   }).join("");
   const sinValor = filas.filter(f=>f.conf.length && !f.valor).length;
   return kpis(filas)+
-   (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Valores").</div>`:"")+
+   (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Análisis").</div>`:"")+
    `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. Si viene un invitado del propietario, tildalo ahí y no se suma. En temporada, 7 días son una semana. Valores en pesos.</div>
    <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x día</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
    <tfoot><tr><td>Total</td><td>${sem1(tSem)}<small>${tDias} días</small></td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`+
@@ -443,31 +452,26 @@ function vistaUnidades(filas){
   const sinValor = filas.filter(f=>f.conf.length && !f.valor);
   const lap = filas.reduce((a,f)=>a+f.lap.length,0);
   let h = kpis(filas);
-  if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor.length} unidad${sinValor.length>1?"es":""} con alquileres (${sinValor.map(f=>f.un.codigo).join(", ")}). Cargalo en la solapa "Valores por unidad".</div>`;
+  if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana. Cargalo abajo de todo en la solapa "Análisis".</div>`;
   if(lap) h += `<div class="note">${lap} día${lap>1?"s":""} en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
+  h += `<label class="sw"><input type="checkbox" id="swReservas" ${state.verReservas?"checked":""}> Mostrar las reservas de cada unidad</label>`;
   const grupos = {};
   filas.forEach(f=>{ (grupos[f.prop] ||= []).push(f); });
   for(const prop of Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es"))){
     const g = grupos[prop];
-    const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
-    h += `<div class="owner"><h2>${esc(prop)}</h2><span class="tot">A pagar <b class="num">${money(dev)}</b> · Pagado <b class="num">${money(pag)}</b> · Pendiente <b class="num">${money(dev-pag)}</b></span><span class="grow"></span></div><div class="grid">`;
-    g.forEach(f=>{
-      const cls = f.pend>0 ? "pos" : f.pend===0 ? "zero" : "neg";
-      const sub = !f.conf.length && !f.lap.length && !f.inv.length ? "Sin alquileres en el período"
-        : `${f.conf.length} día${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""}${f.inv.length?` (${f.inv.length} invitado${f.inv.length>1?"s":""} del propietario, no se paga)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
-      h += `<div class="u ${state.abiertas[f.un.i]?"open":""}" data-u="${f.un.i}">
-        <h3><span>${f.un.codigo} · ${esc(f.un.nombre)}${COMPARTE[f.un.i]?`<span class="tag">${COMPARTE[f.un.i]}</span>`:""}</span></h3>
-        <div class="sub ${f.conf.length && !f.valor?"warn":""}">${sub}</div>
-        <div class="nums"><div><span>A pagar</span><b class="num">${money(f.devengado)}</b></div>
-          <div><span>Pagado</span><b class="num">${money(f.pagado)}</b></div>
-          <div class="pend ${cls}"><span>${f.pend<0?"A favor":"Pendiente"}</span><b class="num">${money(Math.abs(f.pend))}</b></div></div>
-        <div class="acts"><button class="btn gold" data-act="pagar" data-u="${f.un.i}">+ Pago</button><button class="btn ghost" data-act="det" data-u="${f.un.i}">Ver alquileres</button></div>
-        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · lápiz":""}${e.exento?" · invitado":""}</em></span><span class="num">${e.lapiz||e.exento?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
-      </div>`;
-    });
-    h += `</div>`;
+    const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0), dias=g.reduce((a,f)=>a+f.conf.length,0);
+    h += `<div class="owner"><h2>${esc(prop)}</h2><span class="tot">A pagar <b class="num">${money(dev)}</b> · Pagado <b class="num">${money(pag)}</b> · Pendiente <b class="num">${money(dev-pag)}</b></span></div>`;
+    const filasTxt = g.map(f=>{
+      const res = state.verReservas ? `<tr class="resv"><td colspan="5">${
+        estanciasCompletas(f.un.i,f.valor).length ? estanciasCompletas(f.un.i,f.valor).map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"}${e.lapiz?" · lápiz":""}${e.exento?" · invitado":""}</em></span><span class="num">${e.lapiz||e.exento?"—":num(e.monto)}</span></div>`).join("") : "<div><em>Sin alquileres</em></div>"}</td></tr>` : "";
+      return `<tr data-det="${f.un.i}" class="${!f.valor&&f.conf.length?"falta":""}"><td><b>${f.un.codigo}</b><small>${esc(corto(f.un.nombre))}</small></td>
+        <td>${sem1(f.conf.length/7)}<small>${f.conf.length} día${f.conf.length===1?"":"s"}</small></td>
+        <td>${num(f.devengado)}</td><td>${num(f.pagado)}</td><td class="pend ${f.pend<=0?"ok":""}">${num(f.pend)}</td></tr>${res}`;
+    }).join("");
+    h += `<div class="tw"><table class="uni prop"><thead><tr><th>Unidad</th><th>Sem.</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${filasTxt}</tbody>
+      <tfoot><tr><td>Total</td><td>${sem1(dias/7)}<small>${dias} días</small></td><td>${num(dev)}</td><td>${num(pag)}</td><td>${num(dev-pag)}</td></tr></tfoot></table></div>`;
   }
-  h += `<p class="note" style="margin-top:18px">Se cuenta cada día alquilado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. La semana del 27/2 al 6/3 de Temp 27 todavía no existe en el calendario, así que no entra.</p>`;
+  h += `<p class="note" style="margin-top:18px">Se cuenta cada día alquilado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. Los pagos se cargan con el botón "+ Pago" de arriba.</p>`;
   return h;
 }
 
@@ -485,17 +489,11 @@ function vistaPagos(){
    }).join("")+`</div>`;
 }
 
-function vistaValores(filas){
-  return `<p class="note">Acá cargás, por unidad, lo que se le reintegra al propietario por <b>cada semana alquilada</b> (la parte del inquilino del informe de luz). La app lo divide por 7 para pagar por día alquilado. Se guarda solo al salir del casillero.</p>`+
-   filas.map(f=>`<div class="val ${!f.valor?"falta":""}">
-     <div class="n">${f.un.codigo} · ${esc(f.un.nombre)}<small>${COMPARTE[f.un.i]||"Medidor propio"}</small></div>
-     <div><label>$ por semana</label><input class="v" type="number" inputmode="numeric" min="0" step="1" data-u="${f.un.i}" data-campo="valor" value="${f.valor||""}" placeholder="0"></div>
-     <div><label>Propietario</label><input type="text" maxlength="40" data-u="${f.un.i}" data-campo="propietario" value="${esc((state.luz.unidades[f.un.i]||{}).propietario ?? f.prop)}"></div>
-   </div>`).join("");
-}
-
 function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
+  const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
+    <p class="mut">Es lo que se le reintegra al propietario por cada semana alquilada, igual para todas las unidades. Al cambiarlo se recalcula toda la app (se divide por 7 para pagar por día).</p>
+    <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="number" inputmode="numeric" min="0" step="1" value="${state.luz.valorSemana||(vals.length===1?vals[0]:"")||""}" placeholder="0"></div>`;
   const actual = vals.length===1 ? (vals[0]?`${money(vals[0])} por semana, igual para las 18 unidades`:"todavía sin cargar")
                : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
   return `
@@ -535,7 +533,7 @@ function vistaAnalisis(filas){
       <li><b>Unidades estimadas.</b> Nuevo (como Blest), Jaramillo y Canoa (promedio de Madryn e Iguazú), Frutos, Piray y Epuyén (promedio de Esmeralda y San Carlos) no tienen datos propios.</li>
       <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y días sueltos, por eso su total es mayor al del informe.</li>
       <li><b>Subir el monto.</b> Cada $1.000 más por semana suma unos $130.000 a lo que se paga en las 130 semanas.</li>
-    </ul></div>`;
+    </ul></div>`+entrada;
 }
 
 /* ---------- guardado (siempre con merge: nunca pisa el resto) ---------- */
@@ -543,6 +541,11 @@ function puedeEscribir(){ if(!state.luzCargado || state.errorLuz || !fb){ toast(
 async function guardarUnidad(u,campo,val){
   if(!puedeEscribir()) return;
   try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {unidades:{[u]:{[campo]:val}}, actualizado:new Date().toISOString()}, {merge:true}); toast("Guardado"); }
+  catch(e){ console.error(e); toast("No se pudo guardar"); }
+}
+async function guardarValorSemana(v){
+  if(!puedeEscribir()) return;
+  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {valorSemana:v, actualizado:new Date().toISOString()}, {merge:true}); toast("Valor por semana guardado: se recalculó todo"); }
   catch(e){ console.error(e); toast("No se pudo guardar"); }
 }
 async function guardarPago(p){
@@ -647,6 +650,8 @@ $("#main").addEventListener("click",e=>{
   else if(a==="borrar"){ idBorrar=b.dataset.id; const p=state.luz.pagos[idBorrar]||{}; $("#bdDet").textContent=(UNIDADES[p.u]?UNIDADES[p.u].codigo+" · ":"")+money(p.monto||0); $("#dlgBorrar").showModal(); }
 });
 $("#main").addEventListener("change",e=>{
+  if(e.target.id==="valorSemana"){ guardarValorSemana(Math.max(0,Math.round(Number(e.target.value)||0))); return; }
+  if(e.target.id==="swReservas"){ state.verReservas=e.target.checked; render(); return; }
   const i = e.target.closest("input[data-campo]"); if(!i) return;
   const u=+i.dataset.u, campo=i.dataset.campo;
   guardarUnidad(u,campo, campo==="valor" ? Math.max(0,Math.round(Number(i.value)||0)) : i.value.trim());
