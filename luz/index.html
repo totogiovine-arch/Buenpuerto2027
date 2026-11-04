@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1605">
+<meta name="bp-version" content="20261104-1630">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -70,6 +70,8 @@ table.uni tfoot td:first-child{background:var(--bg-alt)}
 .dt td.r{text-align:right;white-space:nowrap;padding-left:8px}
 .dt tr.t td{font-weight:700;border-bottom:none}
 .dt small{color:#6b7690}
+.chk{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;color:#1b2a4a;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:#d4a94a}
 .dsec{font-size:11px;color:#6b7690;text-transform:uppercase;letter-spacing:.4px;margin:6px 0 2px}
 .an{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .an h2{margin:0 0 8px;font-size:14px;color:var(--gold)}
@@ -209,7 +211,7 @@ const iso = ms => new Date(ms).toISOString().slice(0,10);
 const fcorta = f => f.slice(8,10)+"/"+f.slice(5,7);
 const hoyISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 
-const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{}}, luzCargado:false, errorLuz:false,
+const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{},exentos:{}}, luzCargado:false, errorLuz:false,
                 periodo:"todo", tab:"porunidad", abiertas:{} };
 let fb = null;
 
@@ -238,8 +240,9 @@ function escuchar(){
   });
   fb.onSnapshot(fb.doc(fb.db,COL,DOC_LUZ), snap=>{
     const d = snap.exists() ? snap.data() : {};
-    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{} };
+    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{}, exentos:d.exentos||{} };
     state.luzCargado = true; render();
+    if($("#dlgDetalle").open) pintarDetalle(state.detalleU);
   }, ()=>{ state.errorLuz = true; render(); });
 }
 
@@ -269,18 +272,23 @@ function calcularNoches(){
   return out;
 }
 
+/* Invitados del propietario: días que NO se pagan (se marcan en el detalle de cada unidad) */
+function exentosList(){ return Object.entries(state.luz.exentos||{}).map(([id,e])=>({id,...e})); }
+function esExento(u,fecha){ return exentosList().some(e=>e.u===u && fecha>=e.desde && fecha<=e.hasta); }
+
 function calcular(){
-  const noches = calcularNoches().filter(n=> state.periodo==="todo" || n.fecha.slice(0,7)===state.periodo);
+  const noches = calcularNoches().filter(n=> state.periodo==="todo" || n.fecha.slice(0,7)===state.periodo)
+    .map(n=>({...n, exento:esExento(n.u,n.fecha)}));
   const porU = UNIDADES.map(un=>{
     const cfg = state.luz.unidades[un.i]||{};
     const valor = Number(cfg.valor)||0;
     const mias = noches.filter(n=>n.u===un.i).sort((a,b)=>a.fecha<b.fecha?-1:1);
-    const conf = mias.filter(n=>!n.lapiz), lap = mias.filter(n=>n.lapiz);
+    const conf = mias.filter(n=>!n.lapiz && !n.exento), inv = mias.filter(n=>!n.lapiz && n.exento), lap = mias.filter(n=>n.lapiz);
     const devengado = Math.round(conf.length*valor/7);
     const pagos = Object.entries(state.luz.pagos).map(([id,p])=>({id,...p}))
       .filter(p=>p.u===un.i && (state.periodo==="todo" || p.mes===state.periodo));
     const pagado = pagos.reduce((a,p)=>a+(Number(p.monto)||0),0);
-    return { un, valor, prop:(cfg.propietario||"").trim()||PROP_DEFECTO(un.i), conf, lap, devengado, pagado, pend:devengado-pagado, estancias:agrupar(mias,valor) };
+    return { un, valor, prop:(cfg.propietario||"").trim()||PROP_DEFECTO(un.i), conf, inv, lap, devengado, pagado, pend:devengado-pagado, estancias:agrupar(mias,valor) };
   });
   return porU;
 }
@@ -288,11 +296,11 @@ function agrupar(mias,valor){
   const res=[]; let cur=null;
   for(const n of mias){
     const sig = iso(Date.parse(n.fecha+"T00:00:00Z")+DIA);
-    if(cur && cur.nombre===n.nombre && cur.lapiz===n.lapiz && cur.ultima===iso(Date.parse(n.fecha+"T00:00:00Z")-DIA)){ cur.ultima=n.fecha; cur.fin=sig; cur.noches++; }
-    else { if(cur) res.push(cur); cur={nombre:n.nombre,lapiz:n.lapiz,ini:n.fecha,ultima:n.fecha,fin:sig,noches:1}; }
+    if(cur && cur.nombre===n.nombre && cur.lapiz===n.lapiz && cur.exento===n.exento && cur.ultima===iso(Date.parse(n.fecha+"T00:00:00Z")-DIA)){ cur.ultima=n.fecha; cur.fin=sig; cur.noches++; }
+    else { if(cur) res.push(cur); cur={nombre:n.nombre,lapiz:n.lapiz,exento:n.exento,ini:n.fecha,ultima:n.fecha,fin:sig,noches:1}; }
   }
   if(cur) res.push(cur);
-  res.forEach(e=>e.monto=Math.round(e.noches*valor/7));
+  res.forEach(e=>e.monto=e.exento?0:Math.round(e.noches*valor/7));
   return res;
 }
 
@@ -341,42 +349,75 @@ function vistaPorUnidad(filas){
   const sinValor = filas.filter(f=>f.conf.length && !f.valor).length;
   return kpis(filas)+
    (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Valores").</div>`:"")+
-   `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. En temporada, 7 días son una semana. Valores en pesos.</div>
+   `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. Si viene un invitado del propietario, tildalo ahí y no se suma. En temporada, 7 días son una semana. Valores en pesos.</div>
    <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x día</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
-   <tfoot><tr><td>Total</td><td>${sem1(tSem)}<small>${tDias} días</small></td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`;
+   <tfoot><tr><td>Total</td><td>${sem1(tSem)}<small>${tDias} días</small></td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`+
+   (filas.some(f=>f.inv.length) ? `<p class="note">Invitados de propietarios (no se pagan): ${filas.filter(f=>f.inv.length).map(f=>`${f.un.codigo} ${f.inv.length} día${f.inv.length>1?"s":""}`).join(" · ")}.</p>` : "");
 }
 
 function filaDetalle(u){ return calcular().find(x=>x.un.i===u); }
-function abrirDetalle(u){
+function estanciasCompletas(u,valor){
+  const todas = calcularNoches().filter(n=>n.u===u).sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const res=[]; let cur=null;
+  for(const n of todas){
+    const prev = iso(Date.parse(n.fecha+"T00:00:00Z")-DIA);
+    if(cur && cur.nombre===n.nombre && cur.lapiz===n.lapiz && cur.ultima===prev){ cur.ultima=n.fecha; cur.dias.push(n.fecha); }
+    else { if(cur) res.push(cur); cur={nombre:n.nombre,lapiz:n.lapiz,ini:n.fecha,ultima:n.fecha,dias:[n.fecha]}; }
+  }
+  if(cur) res.push(cur);
+  return res.map(e=>{
+    const enP = e.dias.filter(f=>state.periodo==="todo"||f.slice(0,7)===state.periodo);
+    const cuentan = enP.filter(f=>!esExento(u,f));
+    return {...e, fin:iso(Date.parse(e.ultima+"T00:00:00Z")+DIA), diasP:enP.length, exento:e.dias.every(f=>esExento(u,f)),
+            diasCuentan: e.lapiz?0:cuentan.length, monto: e.lapiz?0:Math.round(cuentan.length*valor/7)};
+  }).filter(e=>e.diasP>0);
+}
+function pintarDetalle(u){
   const f = filaDetalle(u); if(!f) return;
   const per = state.periodo==="todo" ? "todo el período" : nombreMes(state.periodo);
   const dias=f.conf.length;
   const pagos = Object.values(state.luz.pagos).filter(p=>p.u===u && (state.periodo==="todo"||p.mes===state.periodo)).sort((a,b)=>a.fecha<b.fecha?-1:1);
   $("#dtTitulo").innerHTML = `${f.un.codigo} · ${esc(f.un.nombre)}<small>${esc(f.prop)} · ${per}</small>`;
-  const est = f.estancias.length ? f.estancias.map(e=>`<tr><td>${esc(e.nombre)}<br><small>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · en lápiz, no se cuenta":""}</small></td><td class="r">${e.lapiz?"—":"$ "+num(e.monto)}</td></tr>`).join("") : '<tr><td><small>Sin alquileres en el período</small></td><td></td></tr>';
+  const ests = estanciasCompletas(u,f.valor);
+  const est = ests.length ? ests.map(e=>`<tr><td>${esc(e.nombre)}<br><small>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"}${e.lapiz?" · en lápiz, no se cuenta":""}${e.exento?" · no se paga":""}</small>
+      <label class="chk"><input type="checkbox" data-ini="${e.ini}" data-ult="${e.ultima}" data-nom="${esc(e.nombre)}" ${e.exento?"checked":""}> Invitado del propietario</label></td>
+      <td class="r">${e.lapiz||e.exento?"—":"$ "+num(e.monto)}</td></tr>`).join("") : '<tr><td><small>Sin alquileres en el período</small></td><td></td></tr>';
   const pg = pagos.length ? pagos.map(p=>`<tr><td>${p.fecha.split("-").reverse().join("/")}${p.mes?" · "+nombreMes(p.mes):""}${p.nota?"<br><small>"+esc(p.nota)+"</small>":""}</td><td class="r">$ ${num(p.monto)}</td></tr>`).join("") : '<tr><td><small>Todavía no hay pagos</small></td><td></td></tr>';
+  const inv = f.inv.length;
   $("#dtCuerpo").innerHTML = `
     <table class="dt">
-      <tr><td>Semanas alquiladas</td><td class="r">${sem1(dias/7)} (${dias} día${dias===1?"":"s"})</td></tr>
+      <tr><td>Semanas que se pagan</td><td class="r">${sem1(dias/7)} (${dias} día${dias===1?"":"s"})</td></tr>
+      ${inv?`<tr><td>Invitados del propietario</td><td class="r">${inv} día${inv===1?"":"s"} · no se pagan</td></tr>`:""}
       <tr><td>Precio de luz por día</td><td class="r">${f.valor?"$ "+dec2(f.valor/7):"sin cargar"}</td></tr>
       <tr><td>Precio por semana</td><td class="r">${f.valor?"$ "+num(f.valor):"sin cargar"}</td></tr>
       <tr class="t"><td>Total a pagar</td><td class="r">$ ${num(f.devengado)}</td></tr>
       <tr><td>Pagado</td><td class="r">$ ${num(f.pagado)}</td></tr>
       <tr class="t"><td>${f.pend<0?"Saldo a favor":"Saldo pendiente"}</td><td class="r">$ ${num(Math.abs(f.pend))}</td></tr>
     </table>
-    <div class="dsec">Alquileres</div><table class="dt">${est}</table>
+    <div class="dsec">Alquileres · tildá los invitados del propietario</div><table class="dt">${est}</table>
     <div class="dsec">Pagos registrados</div><table class="dt">${pg}</table>`;
-  state.detalleU = u;
-  $("#dlgDetalle").showModal();
+}
+function abrirDetalle(u){ state.detalleU = u; pintarDetalle(u); $("#dlgDetalle").showModal(); }
+async function marcarInvitado(u,ini,ult,nombre,on){
+  if(!puedeEscribir()){ pintarDetalle(u); return; }
+  const ref = fb.doc(fb.db,COL,DOC_LUZ), ahora = new Date().toISOString();
+  try{
+    if(on){ await fb.setDoc(ref,{exentos:{["e"+u+"_"+ini]:{u,desde:ini,hasta:ult,nombre}},actualizado:ahora},{merge:true}); toast("Invitado del propietario: no se suma"); }
+    else{
+      const upd = {actualizado:ahora};
+      exentosList().filter(e=>e.u===u && e.desde<=ult && e.hasta>=ini).forEach(e=>{ upd["exentos."+e.id]=fb.deleteField(); });
+      await fb.updateDoc(ref,upd); toast("Vuelve a sumarse");
+    }
+  }catch(err){ console.error(err); toast("No se pudo guardar"); pintarDetalle(u); }
 }
 function textoDetalle(u){
   const f = filaDetalle(u); if(!f) return "";
   const per = state.periodo==="todo" ? "todo el período" : nombreMes(state.periodo);
   const dias=f.conf.length;
   const l=[`*${f.un.codigo} ${f.un.nombre}* — luz por consumo de inquilinos (${per})`,`Propietario: ${f.prop}`,"",
-    `Semanas alquiladas: ${sem1(dias/7)} (${dias} día${dias===1?"":"s"})`,
+    `Semanas que se pagan: ${sem1(dias/7)} (${dias} día${dias===1?"":"s"})`,
     f.valor?`Precio de luz: $ ${dec2(f.valor/7)} por día ($ ${num(f.valor)} por semana)`:"Precio de luz: sin cargar","","Alquileres:"];
-  f.estancias.filter(e=>!e.lapiz).forEach(e=>l.push(`• ${e.nombre}: ${fcorta(e.ini)} al ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"} → $ ${num(e.monto)}`));
+  estanciasCompletas(u,f.valor).filter(e=>!e.lapiz).forEach(e=>l.push(`• ${e.nombre}: ${fcorta(e.ini)} al ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"} → ${e.exento?"invitado del propietario, no se paga":"$ "+num(e.monto)}`));
   l.push("",`Total a pagar: $ ${num(f.devengado)}`,`Pagado: $ ${num(f.pagado)}`,`${f.pend<0?"Saldo a favor":"Saldo pendiente"}: $ ${num(Math.abs(f.pend))}`);
   return l.join("\n");
 }
@@ -395,8 +436,8 @@ function vistaUnidades(filas){
     h += `<div class="owner"><h2>${esc(prop)}</h2><span class="tot">A pagar <b class="num">${money(dev)}</b> · Pagado <b class="num">${money(pag)}</b> · Pendiente <b class="num">${money(dev-pag)}</b></span><span class="grow"></span></div><div class="grid">`;
     g.forEach(f=>{
       const cls = f.pend>0 ? "pos" : f.pend===0 ? "zero" : "neg";
-      const sub = !f.conf.length && !f.lap.length ? "Sin alquileres en el período"
-        : `${f.conf.length} día${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
+      const sub = !f.conf.length && !f.lap.length && !f.inv.length ? "Sin alquileres en el período"
+        : `${f.conf.length} día${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""}${f.inv.length?` (${f.inv.length} invitado${f.inv.length>1?"s":""} del propietario, no se paga)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
       h += `<div class="u ${state.abiertas[f.un.i]?"open":""}" data-u="${f.un.i}">
         <h3><span>${f.un.codigo} · ${esc(f.un.nombre)}${COMPARTE[f.un.i]?`<span class="tag">${COMPARTE[f.un.i]}</span>`:""}</span></h3>
         <div class="sub ${f.conf.length && !f.valor?"warn":""}">${sub}</div>
@@ -404,7 +445,7 @@ function vistaUnidades(filas){
           <div><span>Pagado</span><b class="num">${money(f.pagado)}</b></div>
           <div class="pend ${cls}"><span>${f.pend<0?"A favor":"Pendiente"}</span><b class="num">${money(Math.abs(f.pend))}</b></div></div>
         <div class="acts"><button class="btn gold" data-act="pagar" data-u="${f.un.i}">+ Pago</button><button class="btn ghost" data-act="det" data-u="${f.un.i}">Ver alquileres</button></div>
-        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · lápiz":""}</em></span><span class="num">${e.lapiz?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
+        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · lápiz":""}${e.exento?" · invitado":""}</em></span><span class="num">${e.lapiz||e.exento?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
       </div>`;
     });
     h += `</div>`;
@@ -531,7 +572,7 @@ function textoResumen(){
   const grupos = {}; filas.forEach(f=>(grupos[f.prop] ||= []).push(f));
   const bloques = Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es")).map(p=>{
     const g = grupos[p];
-    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} días → ${money(f.devengado)}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
+    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} días → ${money(f.devengado)}${f.inv.length?` (+${f.inv.length} de invitados, no se pagan)`:""}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
     const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
     return `*${p}* — luz por consumo de inquilinos, ${per}\n${l.join("\n")}\nTotal ${money(dev)} · Pagado ${money(pag)} · Saldo ${money(dev-pag)}`;
   });
@@ -543,6 +584,10 @@ $("#periodo").addEventListener("change",e=>{ state.periodo=e.target.value; rende
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b){ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); } });
 $("#btnPago").addEventListener("click",()=>abrirPago(null));
 $("#btnResumen").addEventListener("click",()=>{ $("#rsTexto").value = textoResumen(); $("#dlgResumen").showModal(); });
+$("#dtCuerpo").addEventListener("change",e=>{
+  const c = e.target.closest("input[data-ini]"); if(!c) return;
+  marcarInvitado(state.detalleU, c.dataset.ini, c.dataset.ult, c.dataset.nom, c.checked);
+});
 $("#dtCopiar").addEventListener("click", async ()=>{
   const t = textoDetalle(state.detalleU);
   try{ await navigator.clipboard.writeText(t); toast("Copiado"); }catch{ toast("No se pudo copiar"); }
