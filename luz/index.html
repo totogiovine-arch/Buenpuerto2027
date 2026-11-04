@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2045">
+<meta name="bp-version" content="20261104-2130">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -43,6 +43,13 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .kpi.ok b{color:var(--ok)}
 .note{font-size:11.5px;color:var(--muted);margin:6px 0}
 @media (max-width:600px){.solo-desktop{display:none!important}}
+table.hist{border-collapse:collapse;font-size:12px;min-width:100%}
+table.hist th{font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:600;text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.hist td{text-align:right;padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
+table.hist td small{display:block;font-size:9.5px;color:var(--muted);font-weight:400}
+table.hist th:first-child,table.hist td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;min-width:150px}
+table.hist tr.tot td{font-weight:700;background:var(--bg-alt);border-top:2px solid var(--gold)}
+table.hist tr.grp td{color:var(--muted);font-style:italic}
 .sw{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0}
 .sw input{width:18px;height:18px;accent-color:var(--gold)}
 table.uni.prop tr.resv td{white-space:normal!important;padding:2px 8px 8px;background:var(--bg-alt);position:static}
@@ -201,7 +208,7 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
   <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="pgGuardar">Guardar pago</button></div>
 </dialog>
 <dialog id="dlgValor">
-  <div class="dh">Cambiar el valor por semana<small>Esto recalcula toda la app</small></div>
+  <div class="dh">Confirmar el cambio<small>Se recalcula con el valor nuevo</small></div>
   <div class="db"><div id="vlTexto"></div></div>
   <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="vlOk">Sí, cambiar</button></div>
 </dialog>
@@ -293,7 +300,7 @@ function escuchar(){
   });
   fb.onSnapshot(fb.doc(fb.db,COL,DOC_LUZ), snap=>{
     const d = snap.exists() ? snap.data() : {};
-    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{}, exentos:d.exentos||{}, valorSemana:Number(d.valorSemana)||0 };
+    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{}, exentos:d.exentos||{}, valorSemana:Number(d.valorSemana)||0, precioKwh:Number(d.precioKwh)||0 };
     state.luzCargado = true; render();
     if($("#dlgDetalle").open) pintarDetalle(state.detalleU);
   }, ()=>{ state.errorLuz = true; render(); });
@@ -516,6 +523,53 @@ function vistaPagos(){
    }).join("")+`</div>`;
 }
 
+/* Consumo histórico CEVIGE (kWh, de junio a mayo del año siguiente) — de "Base de consumos historicos CEVIGE.xlsx" */
+const PRECIO_KWH_DEF = 392, BASICO_KWH_MES = 20;
+const HIST_ANIOS = ["2021-22","2022-23","2023-24","2024-25","2025-26"];
+const HIST = {boca:[359,1131,893,791,907], madero:[400,355,334,598,461], iguazu:[395,468,414,433,459], madryn:[650,645,707,682,1351],
+  panuelo:[246,272,286,422,524], blest:[null,540,260,286,303], sj:[328,346,363,444,679], sc:[682,1016,672,458,496], esm:[541,654,666,738,535],
+  grupo:[6991,6005,6753,4531,5399]};
+const prom2 = (a,b)=>a.map((x,i)=>x==null||b[i]==null?null:(x+b[i])/2);
+function histFilas(){
+  const U=i=>UNIDADES[i];
+  const F=(i,v,nota)=>({units:[i],nombre:`${U(i).codigo} · ${corto(U(i).nombre)}`,v,nota,basico:BASICO_KWH_MES*12});
+  return [F(0,HIST.blest,"estimada igual a Blest"),F(2,HIST.boca),F(3,HIST.blest),F(4,HIST.madero),F(5,HIST.panuelo),
+    F(8,prom2(HIST.esm,HIST.sc),"estimada: promedio de Esmeralda y San Carlos"),F(9,HIST.sj),F(10,HIST.sc),F(11,HIST.esm),
+    F(12,prom2(HIST.esm,HIST.sc),"estimada: promedio de Esmeralda y San Carlos"),F(13,prom2(HIST.esm,HIST.sc),"estimada: promedio de Esmeralda y San Carlos"),
+    F(14,prom2(HIST.madryn,HIST.iguazu),"estimada: promedio de Madryn e Iguazú"),F(15,prom2(HIST.madryn,HIST.iguazu),"estimada: promedio de Madryn e Iguazú"),
+    F(16,HIST.madryn),F(17,HIST.iguazu),
+    {units:[1,6,7],nombre:"BP2 + BP7 + BP8 · Deseado, Caleta y Pirámides",v:HIST.grupo,nota:"2 medidores compartidos (incluyen bombas de agua)",basico:BASICO_KWH_MES*12*2,grupo:true}];
+}
+function histCalculo(){
+  const precio = state.luz.precioKwh || PRECIO_KWH_DEF;
+  const dias={}; calcularNoches().filter(n=>!n.lapiz && !esExento(n.u,n.fecha)).forEach(n=>{ dias[n.u]=(dias[n.u]||0)+1; });
+  return histFilas().map(r=>{
+    const vals=r.v.filter(x=>x!=null), prom=vals.reduce((a,x)=>a+x,0)/vals.length;
+    const exc=Math.max(0,prom-r.basico), monto=r2(exc*precio);
+    const sem=r.units.reduce((a,u)=>a+(dias[u]||0),0)/7;
+    return {...r,prom,exc,monto,sem,porSem:sem?monto/sem:0};
+  });
+}
+function vistaHistorico(){
+  const precio = state.luz.precioKwh || PRECIO_KWH_DEF, filas=histCalculo(), k0=x=>x==null?"—":Math.round(x).toLocaleString("es-AR");
+  const normales=filas.filter(f=>!f.grupo), g=filas.find(f=>f.grupo);
+  const sum=(a,k)=>a.reduce((t,x)=>t+x[k],0);
+  const mN=sum(normales,"monto"), sN=sum(normales,"sem"), vAct=valorActual();
+  const t1=filas.map(f=>`<tr><td>${esc(f.nombre)}${f.nota?`<small>${esc(f.nota)}</small>`:""}</td>${f.v.map(x=>`<td>${k0(x)}</td>`).join("")}<td><b>${k0(f.prom)}</b></td><td>${k0(f.basico)}</td><td>${k0(f.exc)}</td><td><b>${f.monto?money(f.monto):"—"}</b></td></tr>`).join("");
+  const t2=filas.map(f=>`<tr class="${f.grupo?"grp":""}"><td>${esc(f.nombre)}</td><td>${money(f.monto)}</td><td>${f2(f.sem)}</td><td><b>${f.sem?money(f.porSem):"—"}</b></td></tr>`).join("");
+  return `<div class="an"><h2>Consumo histórico de CEVIGE por unidad</h2>
+    <p class="mut">Consumo en kWh de cada año, de junio a junio, según la base de consumos desde 2021. Se promedian los años, se resta lo que paga siempre el propietario (heladera y 4 lamparitas: ${BASICO_KWH_MES} kWh por mes, ${BASICO_KWH_MES*12} kWh por año; el cargo fijo con impuestos también es del propietario y no entra) y <b>todo lo demás es consumo de inquilinos</b>, que es lo que se le devuelve.</p>
+    <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th>${HIST_ANIOS.map(a=>`<th>${a}</th>`).join("")}<th>Prom.</th><th>Básico</th><th>Exceso kWh</th><th>$ por año</th></tr></thead><tbody>${t1}</tbody></table></div>
+    <label class="vlbl">Precio del kWh (con impuestos)</label>
+    <div style="display:flex;gap:8px"><input class="v" id="precioKwh" type="text" inputmode="decimal" autocomplete="off" value="${f2(precio)}" style="flex:1"><button class="btn gold" id="precioGuardar">Guardar</button></div>
+    <p class="mut" style="margin-top:6px">${state.luz.precioKwh?"Precio cargado por vos.":"Precio de las facturas de septiembre 2026."} Si cambia la tarifa, lo cambiás acá y se recalcula este cuadro.</p></div>
+  <div class="an"><h2>Excedente anual contra semanas alquiladas</h2>
+    <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th><th>Excedente por año</th><th>Semanas alquiladas</th><th>$ por semana</th></tr></thead><tbody>${t2}
+      <tr class="tot"><td>Las 15 unidades con medidor propio</td><td>${money(mN)}</td><td>${f2(sN)}</td><td><b>${sN?money(mN/sN):"—"}</b></td></tr></tbody></table></div>
+    <p>Valor cargado hoy: <b>${money(vAct)}</b> por semana. ${sN&&vAct?(vAct>=mN/sN?`Cubre el excedente promedio de las 15 unidades (le sobran <b>${money(vAct-mN/sN)}</b> por semana).`:`Queda corto contra el excedente promedio de las 15 unidades por <b>${money(mN/sN-vAct)}</b> por semana.`):""}</p>
+    <p class="mut">Deseado, Caleta y Pirámides no entran en ese promedio: sus 2 medidores compartidos alimentan también las bombas de agua y otros usos comunes que no son de inquilinos (${money(g.monto)} por año). Las semanas alquiladas son las de todo el calendario cargado, sin lápiz ni invitados.</p></div>`;
+}
+
 function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
   const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
@@ -554,6 +608,8 @@ function vistaAnalisis(filas){
       <tr class="tot"><td>La paga la administración (excedente)</td><td class="r">${money(2032905)}</td></tr>
     </table></div>
 
+  ${vistaHistorico()}
+
   <div class="an"><h2>Dónde podrías quedarte corto</h2>
     <ul>
       <li><b>Un monto único para todas.</b> Las unidades de mucho consumo (Pirámides, Deseado y Caleta, que comparten medidores) quedan cobrando de menos, y las de poco consumo de más. Pirámides sola pesa $ 395.000,00 en el informe.</li>
@@ -574,6 +630,11 @@ async function guardarUnidad(u,campo,val){
 async function guardarValorSemana(v){
   if(!puedeEscribir()) return;
   try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {valorSemana:v, actualizado:new Date().toISOString()}, {merge:true}); toast("Valor por semana guardado: se recalculó todo"); }
+  catch(e){ console.error(e); toast("No se pudo guardar"); }
+}
+async function guardarPrecioKwh(v){
+  if(!puedeEscribir()) return;
+  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {precioKwh:v, actualizado:new Date().toISOString()}, {merge:true}); toast("Precio del kWh guardado"); }
   catch(e){ console.error(e); toast("No se pudo guardar"); }
 }
 async function guardarPago(p){
@@ -611,7 +672,7 @@ $("#pgGuardar").addEventListener("click", async ()=>{
   const ok = await guardarPago({u:+$("#pgUnidad").value, monto, fecha, mes:$("#pgMes").value, nota:$("#pgNota").value.trim()});
   if(ok){ $("#dlgPago").close(); toast("Pago registrado"); }
 });
-$("#vlOk").addEventListener("click", async ()=>{ $("#dlgValor").close(); if(valorPendiente>0) await guardarValorSemana(valorPendiente); valorPendiente=0; });
+$("#vlOk").addEventListener("click", async ()=>{ $("#dlgValor").close(); if(valorPendiente>0) await guardarValorSemana(valorPendiente); else if(precioPendiente>0) await guardarPrecioKwh(precioPendiente); valorPendiente=0; precioPendiente=0; });
 let idBorrar = null;
 $("#bdOk").addEventListener("click", async ()=>{ const id=idBorrar; $("#dlgBorrar").close(); if(id) await borrarPago(id); });
 
@@ -749,15 +810,23 @@ $("#rsCopiar").addEventListener("click", async ()=>{
   else { t.hidden=false; t.readOnly=true; t.focus(); t.select(); toast("No pude copiar solo: el texto quedó seleccionado, copialo con Ctrl+C"); }
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
-let valorPendiente=0;
+let valorPendiente=0, precioPendiente=0;
 function valorActual(){ return state.luz.valorSemana || (calcular()[0]||{}).valor || 0; }
 $("#main").addEventListener("click",e=>{
   if(e.target.id==="valorGuardar"){
     const nuevo=r2(parseNum($("#valorSemana").value)), actual=valorActual();
     if(!(nuevo>0)){ toast("Poné un valor mayor a cero"); $("#valorSemana").value=f2(actual); return; }
     if(nuevo===actual){ toast("Es el mismo valor, no hay cambios"); return; }
-    valorPendiente=nuevo;
+    valorPendiente=nuevo; precioPendiente=0;
     $("#vlTexto").innerHTML=`Vas a cambiar el valor por semana de <b>${money(actual)}</b> a <b>${money(nuevo)}</b>.<br><br>Se recalcula todo lo que se debe a los propietarios. ¿Confirmás?`;
+    $("#dlgValor").showModal(); return;
+  }
+  if(e.target.id==="precioGuardar"){
+    const nuevo=r2(parseNum($("#precioKwh").value)), actual=state.luz.precioKwh||PRECIO_KWH_DEF;
+    if(!(nuevo>0)){ toast("Poné un precio mayor a cero"); $("#precioKwh").value=f2(actual); return; }
+    if(nuevo===actual){ toast("Es el mismo precio, no hay cambios"); return; }
+    precioPendiente=nuevo; valorPendiente=0;
+    $("#vlTexto").innerHTML=`Vas a cambiar el precio del kWh de <b>${money(actual)}</b> a <b>${money(nuevo)}</b>.<br><br>Se recalcula el cuadro de consumo histórico. ¿Confirmás?`;
     $("#dlgValor").showModal(); return;
   }
   const tr = e.target.closest("tr[data-det]"); if(tr){ abrirDetalle(+tr.dataset.det); return; }
@@ -768,7 +837,7 @@ $("#main").addEventListener("click",e=>{
   else if(a==="borrar"){ idBorrar=b.dataset.id; const p=state.luz.pagos[idBorrar]||{}; $("#bdDet").textContent=(UNIDADES[p.u]?UNIDADES[p.u].codigo+" · ":"")+money(p.monto||0); $("#dlgBorrar").showModal(); }
 });
 $("#main").addEventListener("change",e=>{
-  if(e.target.id==="valorSemana") return;   /* se guarda recién con el botón Guardar + confirmación */
+  if(e.target.id==="valorSemana"||e.target.id==="precioKwh") return;   /* se guarda recién con el botón Guardar + confirmación */
   if(e.target.id==="swReservas"){ state.verReservas=e.target.checked; render(); return; }
   const i = e.target.closest("input[data-campo]"); if(!i) return;
   const u=+i.dataset.u, campo=i.dataset.campo;
