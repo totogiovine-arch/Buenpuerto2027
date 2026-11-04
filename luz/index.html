@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2300">
+<meta name="bp-version" content="20261105-0010">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -343,7 +343,7 @@ function calcular(){
     .map(n=>({...n, exento:esExento(n.u,n.fecha)}));
   const porU = UNIDADES.map(un=>{
     const cfg = state.luz.unidades[un.i]||{};
-    const valor = state.luz.valorSemana || Number(cfg.valor)||0;
+    const valor = picoPS(un.i);
     const mias = noches.filter(n=>n.u===un.i).sort((a,b)=>a.fecha<b.fecha?-1:1);
     const conf = mias.filter(n=>!n.lapiz && !n.exento), inv = mias.filter(n=>!n.lapiz && n.exento), lap = mias.filter(n=>n.lapiz);
     const devengado = r2(conf.length*valor/7);
@@ -410,7 +410,7 @@ function vistaPorUnidad(filas){
   }).join("");
   const sinValor = filas.filter(f=>f.conf.length && !f.valor).length;
   return kpis(filas)+
-   (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Análisis").</div>`:"")+
+   (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Hay ${sinValor} unidad${sinValor>1?"es":""} con alquileres sin consumo de pico cargado.</div>`:"")+
    `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. Si viene un invitado del propietario, tildalo ahí y no se suma. Se paga por semana alquilada: lo que no completa la semana cuenta en proporción (por ejemplo 3/7). Valores en pesos.</div>
    <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x sem</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
    <tfoot><tr><td>Total</td><td>${sem1(tSem)}</td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`+
@@ -488,7 +488,7 @@ function vistaUnidades(filas){
   const sinValor = filas.filter(f=>f.conf.length && !f.valor);
   const lap = filas.reduce((a,f)=>a+f.lap.length,0);
   let h = '<div class="prop-wrap">'+kpis(filas);
-  if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana. Cargalo abajo de todo en la solapa "Análisis".</div>`;
+  if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Hay unidades con alquileres sin consumo de pico cargado.</div>`;
   if(lap) h += `<div class="note">${sem1(lap/7)} semanas en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
   h += `<label class="sw"><input type="checkbox" id="swReservas" ${state.verReservas?"checked":""}> Mostrar las reservas de cada unidad</label>`;
   const grupos = {};
@@ -575,40 +575,41 @@ function vistaHistorico(){
 
 /* Mes de verano (dic–mar) de mayor consumo de cada unidad, 2021-22 a 2025-26 (kWh) */
 const SEM_POR_MES = 30.4/7;
+const VALOR_UNICO_DEF=15638;
 const PICO = {0:[115,"feb 2023","igual a Blest"],1:[308.5,"feb 2023","50% del medidor Pirámides 1"],2:[196,"feb 2023"],3:[115,"feb 2023"],4:[94,"dic 2025"],5:[74,"dic 2025"],
   6:[394.5,"feb 2022","50% del medidor Pirámides 2"],7:[665.5,"feb 2022","50% de Pirámides 1 + 50% de Pirámides 2",2],8:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],
   9:[120,"feb 2025"],10:[181,"mar 2022"],11:[148,"mar 2025"],12:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],13:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],
   14:[170,"ene 2026","estimada: promedio de Madryn e Iguazú"],15:[170,"ene 2026","estimada: promedio de Madryn e Iguazú"],16:[226,"ene 2026"],17:[125,"feb 2023"]};
+function picoPS(i){ const [kwh,,,mult]=PICO[i]; return r2(Math.max(0,kwh-BASICO_KWH_MES*(mult||1))/SEM_POR_MES*(state.luz.precioKwh||PRECIO_KWH_DEF)); }
 function picoCalculo(){
   const precio = state.luz.precioKwh || PRECIO_KWH_DEF;
   const dias={}; calcularNoches().filter(n=>!n.lapiz && !esExento(n.u,n.fecha)).forEach(n=>{ dias[n.u]=(dias[n.u]||0)+1; });
   return UNIDADES.map(un=>{
-    const [kwh,mes,nota,mult]=PICO[un.i], bas=BASICO_KWH_MES*(mult||1), exc=Math.max(0,kwh-bas), kws=exc/SEM_POR_MES, ps=kws*precio, sem=(dias[un.i]||0)/7;
+    const [kwh,mes,nota,mult]=PICO[un.i], bas=BASICO_KWH_MES*(mult||1), exc=Math.max(0,kwh-bas), kws=exc/SEM_POR_MES, ps=picoPS(un.i), sem=(dias[un.i]||0)/7;
     return {un,kwh,mes,nota,bas,exc,kws,ps,sem,total:r2(ps*sem)};
   });
 }
 function vistaPicos(){
   const filas=picoCalculo(), k1=x=>x.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:1});
-  const tot=filas.reduce((a,f)=>a+f.total,0), sem=filas.reduce((a,f)=>a+f.sem,0), actual=calcular().reduce((a,f)=>a+f.devengado,0), dif=actual-tot;
+  const tot=filas.reduce((a,f)=>a+f.total,0), sem=filas.reduce((a,f)=>a+f.sem,0), actual=r2(sem*(state.luz.valorSemana||VALOR_UNICO_DEF)), dif=actual-tot;
   const body=filas.map(f=>`<tr><td>${f.un.codigo} · ${esc(corto(f.un.nombre))}${f.nota?`<small>${esc(f.nota)}</small>`:""}</td><td>${k1(f.kwh)}<small>${f.mes}</small></td><td>${k1(f.bas)}</td><td>${k1(f.exc)}</td><td>${k1(f.kws)}</td><td><b>${money(f.ps)}</b></td><td>${f2(f.sem)}</td><td class="adm"><b>${money(f.total)}</b></td></tr>`).join("");
   return `<div class="an"><h2>Pico de consumo de verano: lo que se paga por semana alquilada</h2>
     <p class="mut">Para cada unidad se toma el <b>mes de verano (diciembre a marzo) de mayor consumo</b> de los últimos 5 años, se le resta el básico del propietario del mes (${BASICO_KWH_MES} kWh) y se pasa a semana (÷ ${f2(SEM_POR_MES)} semanas por mes). Se supone que <b>cada semana alquilada consume ese pico</b>. Eso por el precio del kWh y por las semanas alquiladas de cada unidad da lo que se le paga al propietario.</p>
     <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th><th>Mes pico (kWh)</th><th>Básico propietario</th><th>Excedente (kWh)</th><th>kWh por semana</th><th>$ por semana</th><th>Semanas alquiladas</th><th>Total a pagar</th></tr></thead><tbody>${body}
     <tr class="tot"><td>Total</td><td></td><td></td><td></td><td></td><td><b>${sem?money(tot/sem):"—"}</b><small>promedio</small></td><td>${f2(sem)}</td><td><b>${money(tot)}</b></td></tr></tbody></table></div>
-    <p>Con el valor por semana cargado hoy, la app calcula <b>${money(actual)}</b>. Este método da <b>${money(tot)}</b>. ${dif>=0?`La app paga <b>${money(dif)}</b> de más (${f2(tot?dif/tot*100:0)}%).`:`La app queda corta por <b>${money(-dif)}</b> (${f2(tot?-dif/tot*100:0)}%).`}</p>
+    <p><b>Este es el método que usa la app</b>: cada unidad cobra su propio $ por semana. El total a pagar es <b>${money(tot)}</b>. Con un valor único de ${money(state.luz.valorSemana||VALOR_UNICO_DEF)} para todas daría <b>${money(actual)}</b> (${dif>=0?`${money(dif)} más`:`${money(-dif)} menos`}, ${f2(tot?Math.abs(dif)/tot*100:0)}%).</p>
     <p class="mut">Deseado, Caleta y Pirámides comparten los medidores Pirámides 1 y 2 (se reparte 50% y 50%). Esos medidores también alimentan las bombas de agua, así que su pico puede incluir consumo que no es de inquilinos. Las semanas son las de todo el calendario cargado, sin lápiz ni invitados.</p></div>`;
 }
 
 function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
-  const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
-    <p class="mut">Es lo que se le reintegra al propietario por cada semana alquilada, igual para todas las unidades. Al cambiarlo se recalcula toda la app (si un alquiler no completa la semana, se paga en proporción).</p>
-    <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="text" inputmode="decimal" autocomplete="off" value="${(state.luz.valorSemana||(vals.length===1?vals[0]:0))?f2(state.luz.valorSemana||vals[0]):""}" placeholder="0,00">
+  const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor único por semana (solo referencia)</h2>
+    <p class="mut">La app paga a cada unidad según su propio pico de verano (ver abajo). Este valor único es una alternativa para comparar: no cambia lo que se debe a los propietarios.</p>
+    <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="text" inputmode="decimal" autocomplete="off" value="${f2(valorActual())}" placeholder="0,00">
     <button class="btn gold" id="valorGuardar" style="margin-top:10px">Guardar</button></div>`;
-  const actual = vals.length===1 ? (vals[0]?`${money(vals[0])} por semana, igual para las 18 unidades`:"todavía sin cargar")
-               : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
+  const pos=vals.filter(v=>v>0), actual = pos.length?`entre ${money(Math.min(...pos))} y ${money(Math.max(...pos))} por semana, según la unidad (pico de verano)`:"todavía sin cargar";
   return `
-  <div class="an"><h2>Valor cargado hoy en la app</h2>
+  <div class="an"><h2>Valor por semana que usa la app</h2>
     <p><b>${actual}</b>. Si un alquiler no completa la semana, se paga en proporción.</p>
     <p class="mut">Fuente: informe "Estimación consumo eléctrico Temporada 2027" (130 semanas alquiladas al 27/10/2026, del 19/12 al 6/3). Si cambian las tarifas o las reservas, hay que recalcularlo.</p></div>
 
@@ -660,7 +661,7 @@ async function guardarUnidad(u,campo,val){
 }
 async function guardarValorSemana(v){
   if(!puedeEscribir()) return;
-  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {valorSemana:v, actualizado:new Date().toISOString()}, {merge:true}); toast("Valor por semana guardado: se recalculó todo"); }
+  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {valorSemana:v, actualizado:new Date().toISOString()}, {merge:true}); toast("Valor único guardado (solo referencia)"); }
   catch(e){ console.error(e); toast("No se pudo guardar"); }
 }
 async function guardarPrecioKwh(v){
@@ -842,14 +843,14 @@ $("#rsCopiar").addEventListener("click", async ()=>{
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
 let valorPendiente=0, precioPendiente=0;
-function valorActual(){ return state.luz.valorSemana || (calcular()[0]||{}).valor || 0; }
+function valorActual(){ return state.luz.valorSemana || VALOR_UNICO_DEF; }
 $("#main").addEventListener("click",e=>{
   if(e.target.id==="valorGuardar"){
     const nuevo=r2(parseNum($("#valorSemana").value)), actual=valorActual();
     if(!(nuevo>0)){ toast("Poné un valor mayor a cero"); $("#valorSemana").value=f2(actual); return; }
     if(nuevo===actual){ toast("Es el mismo valor, no hay cambios"); return; }
     valorPendiente=nuevo; precioPendiente=0;
-    $("#vlTexto").innerHTML=`Vas a cambiar el valor por semana de <b>${money(actual)}</b> a <b>${money(nuevo)}</b>.<br><br>Se recalcula todo lo que se debe a los propietarios. ¿Confirmás?`;
+    $("#vlTexto").innerHTML=`Vas a cambiar el valor único de referencia de <b>${money(actual)}</b> a <b>${money(nuevo)}</b>.<br><br>No cambia lo que se debe a los propietarios, solo la comparación. ¿Confirmás?`;
     $("#dlgValor").showModal(); return;
   }
   if(e.target.id==="precioGuardar"){
