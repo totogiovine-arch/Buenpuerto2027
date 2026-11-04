@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1850">
+<meta name="bp-version" content="20261104-1920">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -206,7 +206,7 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
 <dialog id="dlgDetalle">
   <div class="dh" id="dtTitulo">Detalle</div>
   <div class="db" id="dtCuerpo" style="max-height:62vh;overflow:auto"></div>
-  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="dtCopiar">Copiar</button></div>
+  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="dtGuardar">Guardar</button></div>
 </dialog>
 <dialog id="dlgResumen">
   <div class="dh">Resumen por propietario<small>Para copiar y mandar por WhatsApp</small></div>
@@ -427,7 +427,7 @@ function pintarDetalle(u){
   const ests = estanciasCompletas(u,f.valor);
   const est = ests.length ? ests.map(e=>`<div class="es ${e.exento?"ex":""}"><div class="en">${esc(e.nombre)}</div><div class="em">${e.lapiz||e.exento?"—":"$ "+num(e.monto)}</div>
       <div class="ef">${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.diasP} día${e.diasP===1?"":"s"}${e.lapiz?" · lápiz":""}</div>
-      ${e.lapiz?"<span></span>":`<label class="chk"><input type="checkbox" data-ini="${e.ini}" data-ult="${e.ultima}" data-nom="${esc(e.nombre)}" ${e.exento?"checked":""}>Invitado del propietario</label>`}</div>`).join("") : '<div class="ef">Sin alquileres en el período</div>';
+      ${e.lapiz?"<span></span>":`<label class="chk"><input type="checkbox" data-ini="${e.ini}" data-ult="${e.ultima}" data-nom="${esc(e.nombre)}" ${(state.pendInv&&(e.ini+"|"+e.ultima) in state.pendInv ? state.pendInv[e.ini+"|"+e.ultima].on : e.exento)?"checked":""}>Invitado del propietario</label>`}</div>`).join("") : '<div class="ef">Sin alquileres en el período</div>';
   const pg = pagos.length ? pagos.map(p=>`<tr><td>${p.fecha.split("-").reverse().join("/")}${p.mes?" · "+nombreMes(p.mes):""}${p.nota?"<br><small>"+esc(p.nota)+"</small>":""}</td><td class="r">$ ${num(p.monto)}</td></tr>`).join("") : '<tr><td><small>Todavía no hay pagos</small></td><td></td></tr>';
   const inv = f.inv.length;
   $("#dtCuerpo").innerHTML = `
@@ -443,18 +443,19 @@ function pintarDetalle(u){
     <div class="dsec">Alquileres · tildá los invitados del propietario</div>${est}
     <div class="dsec">Pagos registrados</div><table class="dt">${pg}</table>`;
 }
-function abrirDetalle(u){ state.detalleU = u; pintarDetalle(u); $("#dlgDetalle").showModal(); }
-async function marcarInvitado(u,ini,ult,nombre,on){
-  if(!puedeEscribir()){ pintarDetalle(u); return; }
+function abrirDetalle(u){ state.detalleU = u; state.pendInv = {}; pintarDetalle(u); $("#dlgDetalle").showModal(); }
+async function marcarInvitado(u,ini,ult,nombre,on,silencio){
+  if(!puedeEscribir()){ pintarDetalle(u); return false; }
   const ref = fb.doc(fb.db,COL,DOC_LUZ), ahora = new Date().toISOString();
   try{
-    if(on){ await fb.setDoc(ref,{exentos:{["e"+u+"_"+ini]:{u,desde:ini,hasta:ult,nombre}},actualizado:ahora},{merge:true}); toast("Invitado del propietario: no se suma"); }
+    if(on){ await fb.setDoc(ref,{exentos:{["e"+u+"_"+ini]:{u,desde:ini,hasta:ult,nombre}},actualizado:ahora},{merge:true}); if(!silencio) toast("Invitado del propietario: no se suma"); }
     else{
       const upd = {actualizado:ahora};
       exentosList().filter(e=>e.u===u && e.desde<=ult && e.hasta>=ini).forEach(e=>{ upd["exentos."+e.id]=fb.deleteField(); });
-      await fb.updateDoc(ref,upd); toast("Vuelve a sumarse");
+      await fb.updateDoc(ref,upd); if(!silencio) toast("Vuelve a sumarse");
     }
-  }catch(err){ console.error(err); toast("No se pudo guardar"); pintarDetalle(u); }
+    return true;
+  }catch(err){ console.error(err); toast("No se pudo guardar"); pintarDetalle(u); return false; }
 }
 function textoDetalle(u){
   const f = filaDetalle(u); if(!f) return "";
@@ -650,11 +651,18 @@ $("#btnResumen").addEventListener("click",()=>{ pintarResumen(); $("#dlgResumen"
 $("#rsChips").addEventListener("click",e=>{ const b=e.target.closest("button[data-p]"); if(b){ state.rsSel=b.dataset.p; pintarResumen(); } });
 $("#dtCuerpo").addEventListener("change",e=>{
   const c = e.target.closest("input[data-ini]"); if(!c) return;
-  marcarInvitado(state.detalleU, c.dataset.ini, c.dataset.ult, c.dataset.nom, c.checked);
+  (state.pendInv ||= {})[c.dataset.ini+"|"+c.dataset.ult] = {ini:c.dataset.ini, ult:c.dataset.ult, nombre:c.dataset.nom, on:c.checked};
 });
-$("#dtCopiar").addEventListener("click", async ()=>{
-  const t = textoDetalle(state.detalleU);
-  try{ await navigator.clipboard.writeText(t); toast("Copiado"); }catch{ toast("No se pudo copiar"); }
+$("#dtGuardar").addEventListener("click", async ()=>{
+  const u=state.detalleU, cambios=Object.values(state.pendInv||{});
+  let ok=true, n=0;
+  for(const c of cambios){
+    const ya = estanciasCompletas(u,0).find(e=>e.ini===c.ini && e.ultima===c.ult);
+    if(ya && ya.exento===c.on) continue;
+    if(!(await marcarInvitado(u,c.ini,c.ult,c.nombre,c.on,true))){ ok=false; break; } n++;
+  }
+  if(!ok) return;
+  state.pendInv={}; $("#dlgDetalle").close(); toast(n?"Guardado":"Sin cambios");
 });
 $("#rsCopiar").addEventListener("click", async ()=>{
   const t = $("#rsTexto"); t.hidden=false; t.select(); t.hidden=true;
