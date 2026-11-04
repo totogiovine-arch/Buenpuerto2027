@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1920">
+<meta name="bp-version" content="20261104-1935">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -664,9 +664,21 @@ $("#dtGuardar").addEventListener("click", async ()=>{
   if(!ok) return;
   state.pendInv={}; $("#dlgDetalle").close(); toast(n?"Guardado":"Sin cambios");
 });
+/* copiar: primero execCommand dentro del diálogo (los diálogos modales bloquean lo de afuera), después el portapapeles moderno */
+async function copiarTexto(txt, dentro){
+  try{
+    const ta=document.createElement("textarea"); ta.value=txt; ta.setAttribute("readonly","");
+    ta.style.cssText="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;font-size:16px";
+    (dentro||document.body).appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0,ta.value.length);
+    const ok=document.execCommand("copy"); ta.remove(); if(ok) return true;
+  }catch(e){}
+  try{ await navigator.clipboard.writeText(txt); return true; }catch(e){}
+  return false;
+}
 $("#rsCopiar").addEventListener("click", async ()=>{
-  const t = $("#rsTexto"); t.hidden=false; t.select(); t.hidden=true;
-  try{ await navigator.clipboard.writeText(t.value); toast("Copiado"); }catch{ document.execCommand("copy"); toast("Copiado"); }
+  const t=$("#rsTexto");
+  if(await copiarTexto(t.value, $("#dlgResumen"))) toast("Copiado: ya podés pegarlo en WhatsApp");
+  else { t.hidden=false; t.readOnly=true; t.focus(); t.select(); toast("No pude copiar solo: el texto quedó seleccionado, copialo con Ctrl+C"); }
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
 $("#main").addEventListener("click",e=>{
