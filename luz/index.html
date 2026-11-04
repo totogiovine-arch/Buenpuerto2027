@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2220">
+<meta name="bp-version" content="20261104-2245">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -92,7 +92,8 @@ table.uni tfoot td:first-child{background:var(--bg-alt)}
 .dt small{color:#6b7690}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.tw:has(table.prop){max-width:760px}
+.prop-wrap{max-width:820px;margin:0 auto}
+.prop-wrap .tw{max-width:none}
 table.uni.prop td{padding-top:5px;padding-bottom:5px}
 table.uni.prop tbody tr:not(.resv){cursor:default}
 table.uni b.nm{color:#fff;font-weight:700;display:block;overflow:hidden;text-overflow:ellipsis}
@@ -487,7 +488,7 @@ function textoDetalle(u){
 function vistaUnidades(filas){
   const sinValor = filas.filter(f=>f.conf.length && !f.valor);
   const lap = filas.reduce((a,f)=>a+f.lap.length,0);
-  let h = kpis(filas);
+  let h = '<div class="prop-wrap">'+kpis(filas);
   if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana. Cargalo abajo de todo en la solapa "Análisis".</div>`;
   if(lap) h += `<div class="note">${sem1(lap/7)} semanas en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
   h += `<label class="sw"><input type="checkbox" id="swReservas" ${state.verReservas?"checked":""}> Mostrar las reservas de cada unidad</label>`;
@@ -508,7 +509,7 @@ function vistaUnidades(filas){
       <tfoot><tr><td>Total</td><td>${sem1(dias/7)}</td><td>${num(dev)}</td><td>${num(pag)}</td><td>${num(dev-pag)}</td></tr></tfoot></table></div>`;
   }
   h += `<p class="note" style="margin-top:18px">Se cuenta cada alquiler cargado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. Los pagos se cargan con el botón "+ Pago" de arriba.</p>`;
-  return h;
+  return h+"</div>";
 }
 
 function vistaPagos(){
