@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2030">
+<meta name="bp-version" content="20261104-2045">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -199,6 +199,11 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
     <div><label>Nota (opcional)</label><input id="pgNota" type="text" maxlength="120" placeholder="Transferencia, efectivo…"></div>
   </div>
   <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="pgGuardar">Guardar pago</button></div>
+</dialog>
+<dialog id="dlgValor">
+  <div class="dh">Cambiar el valor por semana<small>Esto recalcula toda la app</small></div>
+  <div class="db"><div id="vlTexto"></div></div>
+  <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="vlOk">Sí, cambiar</button></div>
 </dialog>
 <dialog id="dlgBorrar">
   <div class="dh">Borrar pago<small id="bdDet"></small></div>
@@ -515,7 +520,8 @@ function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
   const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
     <p class="mut">Es lo que se le reintegra al propietario por cada semana alquilada, igual para todas las unidades. Al cambiarlo se recalcula toda la app (si un alquiler no completa la semana, se paga en proporción).</p>
-    <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="text" inputmode="decimal" autocomplete="off" value="${(state.luz.valorSemana||(vals.length===1?vals[0]:0))?f2(state.luz.valorSemana||vals[0]):""}" placeholder="0,00"></div>`;
+    <label class="vlbl">$ por semana</label><input class="v" id="valorSemana" type="text" inputmode="decimal" autocomplete="off" value="${(state.luz.valorSemana||(vals.length===1?vals[0]:0))?f2(state.luz.valorSemana||vals[0]):""}" placeholder="0,00">
+    <button class="btn gold" id="valorGuardar" style="margin-top:10px">Guardar</button></div>`;
   const actual = vals.length===1 ? (vals[0]?`${money(vals[0])} por semana, igual para las 18 unidades`:"todavía sin cargar")
                : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
   return `
@@ -605,6 +611,7 @@ $("#pgGuardar").addEventListener("click", async ()=>{
   const ok = await guardarPago({u:+$("#pgUnidad").value, monto, fecha, mes:$("#pgMes").value, nota:$("#pgNota").value.trim()});
   if(ok){ $("#dlgPago").close(); toast("Pago registrado"); }
 });
+$("#vlOk").addEventListener("click", async ()=>{ $("#dlgValor").close(); if(valorPendiente>0) await guardarValorSemana(valorPendiente); valorPendiente=0; });
 let idBorrar = null;
 $("#bdOk").addEventListener("click", async ()=>{ const id=idBorrar; $("#dlgBorrar").close(); if(id) await borrarPago(id); });
 
@@ -742,7 +749,17 @@ $("#rsCopiar").addEventListener("click", async ()=>{
   else { t.hidden=false; t.readOnly=true; t.focus(); t.select(); toast("No pude copiar solo: el texto quedó seleccionado, copialo con Ctrl+C"); }
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
+let valorPendiente=0;
+function valorActual(){ return state.luz.valorSemana || (calcular()[0]||{}).valor || 0; }
 $("#main").addEventListener("click",e=>{
+  if(e.target.id==="valorGuardar"){
+    const nuevo=r2(parseNum($("#valorSemana").value)), actual=valorActual();
+    if(!(nuevo>0)){ toast("Poné un valor mayor a cero"); $("#valorSemana").value=f2(actual); return; }
+    if(nuevo===actual){ toast("Es el mismo valor, no hay cambios"); return; }
+    valorPendiente=nuevo;
+    $("#vlTexto").innerHTML=`Vas a cambiar el valor por semana de <b>${money(actual)}</b> a <b>${money(nuevo)}</b>.<br><br>Se recalcula todo lo que se debe a los propietarios. ¿Confirmás?`;
+    $("#dlgValor").showModal(); return;
+  }
   const tr = e.target.closest("tr[data-det]"); if(tr){ abrirDetalle(+tr.dataset.det); return; }
   const b = e.target.closest("[data-act]"); if(!b) return;
   const a=b.dataset.act;
@@ -751,7 +768,7 @@ $("#main").addEventListener("click",e=>{
   else if(a==="borrar"){ idBorrar=b.dataset.id; const p=state.luz.pagos[idBorrar]||{}; $("#bdDet").textContent=(UNIDADES[p.u]?UNIDADES[p.u].codigo+" · ":"")+money(p.monto||0); $("#dlgBorrar").showModal(); }
 });
 $("#main").addEventListener("change",e=>{
-  if(e.target.id==="valorSemana"){ guardarValorSemana(Math.max(0,r2(parseNum(e.target.value)))); return; }
+  if(e.target.id==="valorSemana") return;   /* se guarda recién con el botón Guardar + confirmación */
   if(e.target.id==="swReservas"){ state.verReservas=e.target.checked; render(); return; }
   const i = e.target.closest("input[data-campo]"); if(!i) return;
   const u=+i.dataset.u, campo=i.dataset.campo;
