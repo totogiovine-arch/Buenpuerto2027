@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2130">
+<meta name="bp-version" content="20261104-2150">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -43,11 +43,13 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .kpi.ok b{color:var(--ok)}
 .note{font-size:11.5px;color:var(--muted);margin:6px 0}
 @media (max-width:600px){.solo-desktop{display:none!important}}
-table.hist{border-collapse:collapse;font-size:12px;min-width:100%}
-table.hist th{font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:600;text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-table.hist td{text-align:right;padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
+table.hist{border-collapse:collapse;font-size:11.5px;min-width:100%}
+table.hist th{font-size:9.5px;text-transform:uppercase;letter-spacing:.2px;color:var(--muted);font-weight:600;text-align:right;padding:8px 6px;vertical-align:bottom;border-bottom:1px solid var(--line);white-space:nowrap}
+table.hist td{text-align:right;padding:7px 6px;border-top:1px solid var(--line);white-space:nowrap}
 table.hist td small{display:block;font-size:9.5px;color:var(--muted);font-weight:400}
-table.hist th:first-child,table.hist td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;min-width:150px}
+table.hist th:first-child,table.hist td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;min-width:130px;white-space:normal}
+table.hist td.adm{color:var(--gold-soft)}
+table.hist th{white-space:normal;min-width:62px}
 table.hist tr.tot td{font-weight:700;background:var(--bg-alt);border-top:2px solid var(--gold)}
 table.hist tr.grp td{color:var(--muted);font-style:italic}
 .sw{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0}
@@ -58,7 +60,7 @@ table.uni.prop .resv div>span:first-child{flex:1;min-width:0;overflow-wrap:anywh
 table.uni.prop .resv em{font-style:normal;color:var(--muted)}
 table.uni.prop .resv .lap{opacity:.6}
 .vlbl{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-#valorSemana{width:100%;border:1px solid var(--gold);border-radius:10px;padding:10px;background:var(--bg-alt);color:#fff;font-size:16px;font-weight:700}
+#valorSemana,#precioKwh{width:100%;border:1px solid var(--gold);border-radius:10px;padding:10px;background:var(--bg-alt);color:#fff;font-size:16px;font-weight:700}
 .owner{margin:18px 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:6px}
 .owner h2{margin:0;font-size:14px;color:var(--gold)}
 .owner .tot{font-size:12px;color:var(--muted)}
@@ -544,10 +546,11 @@ function histCalculo(){
   const precio = state.luz.precioKwh || PRECIO_KWH_DEF;
   const dias={}; calcularNoches().filter(n=>!n.lapiz && !esExento(n.u,n.fecha)).forEach(n=>{ dias[n.u]=(dias[n.u]||0)+1; });
   return histFilas().map(r=>{
-    const vals=r.v.filter(x=>x!=null), prom=vals.reduce((a,x)=>a+x,0)/vals.length;
-    const exc=Math.max(0,prom-r.basico), monto=r2(exc*precio);
+    const vals=r.v.filter(x=>x!=null), n=vals.length, tot=vals.reduce((a,x)=>a+x,0), prom=tot/n;
+    const propTot=r.basico*n, admTot=Math.max(0,tot-propTot);
+    const exc=admTot/n, monto=r2(exc*precio);
     const sem=r.units.reduce((a,u)=>a+(dias[u]||0),0)/7;
-    return {...r,prom,exc,monto,sem,porSem:sem?monto/sem:0};
+    return {...r,prom,n,tot,propTot,admTot,exc,monto,sem,porSem:sem?monto/sem:0};
   });
 }
 function vistaHistorico(){
@@ -555,11 +558,11 @@ function vistaHistorico(){
   const normales=filas.filter(f=>!f.grupo), g=filas.find(f=>f.grupo);
   const sum=(a,k)=>a.reduce((t,x)=>t+x[k],0);
   const mN=sum(normales,"monto"), sN=sum(normales,"sem"), vAct=valorActual();
-  const t1=filas.map(f=>`<tr><td>${esc(f.nombre)}${f.nota?`<small>${esc(f.nota)}</small>`:""}</td>${f.v.map(x=>`<td>${k0(x)}</td>`).join("")}<td><b>${k0(f.prom)}</b></td><td>${k0(f.basico)}</td><td>${k0(f.exc)}</td><td><b>${f.monto?money(f.monto):"—"}</b></td></tr>`).join("");
+  const t1=filas.map(f=>`<tr><td>${esc(f.nombre)}${f.nota?`<small>${esc(f.nota)}</small>`:""}</td>${f.v.map(x=>`<td>${k0(x)}</td>`).join("")}<td><b>${k0(f.prom)}</b></td><td>${k0(f.tot)}<small>${f.n} años</small></td><td>${k0(f.basico)}</td><td>${k0(f.propTot)}<small>${f.n} años</small></td><td class="adm">${k0(f.admTot)}<small>${k0(f.exc)} por año</small></td><td class="adm"><b>${f.monto?money(f.monto):"—"}</b></td></tr>`).join("");
   const t2=filas.map(f=>`<tr class="${f.grupo?"grp":""}"><td>${esc(f.nombre)}</td><td>${money(f.monto)}</td><td>${f2(f.sem)}</td><td><b>${f.sem?money(f.porSem):"—"}</b></td></tr>`).join("");
   return `<div class="an"><h2>Consumo histórico de CEVIGE por unidad</h2>
-    <p class="mut">Consumo en kWh de cada año, de junio a junio, según la base de consumos desde 2021. Se promedian los años, se resta lo que paga siempre el propietario (heladera y 4 lamparitas: ${BASICO_KWH_MES} kWh por mes, ${BASICO_KWH_MES*12} kWh por año; el cargo fijo con impuestos también es del propietario y no entra) y <b>todo lo demás es consumo de inquilinos</b>, que es lo que se le devuelve.</p>
-    <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th>${HIST_ANIOS.map(a=>`<th>${a}</th>`).join("")}<th>Prom.</th><th>Básico</th><th>Exceso kWh</th><th>$ por año</th></tr></thead><tbody>${t1}</tbody></table></div>
+    <p class="mut">Consumo en kWh de cada año, de junio a junio, según la base de consumos desde 2021. Al consumo total de esos años se le resta lo que paga siempre el propietario (heladera y 4 lamparitas: ${BASICO_KWH_MES} kWh por mes, ${BASICO_KWH_MES*12} kWh por año; el cargo fijo con impuestos también es del propietario y no entra). <b>Lo que queda es consumo de inquilinos y está a cargo de la ADM</b>.</p>
+    <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th>${HIST_ANIOS.map(a=>`<th>${a}</th>`).join("")}<th>Consumo anual (prom.)</th><th>Consumo total del período</th><th>Propietario por año (4 lamparitas + heladera)</th><th>Propietario total del período</th><th>A cargo de la ADM (kWh)</th><th>A cargo de la ADM ($ por año)</th></tr></thead><tbody>${t1}</tbody></table></div>
     <label class="vlbl">Precio del kWh (con impuestos)</label>
     <div style="display:flex;gap:8px"><input class="v" id="precioKwh" type="text" inputmode="decimal" autocomplete="off" value="${f2(precio)}" style="flex:1"><button class="btn gold" id="precioGuardar">Guardar</button></div>
     <p class="mut" style="margin-top:6px">${state.luz.precioKwh?"Precio cargado por vos.":"Precio de las facturas de septiembre 2026."} Si cambia la tarifa, lo cambiás acá y se recalcula este cuadro.</p></div>
