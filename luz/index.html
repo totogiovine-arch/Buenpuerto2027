@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1555">
+<meta name="bp-version" content="20261104-1605">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -29,7 +29,8 @@ select.sel{background:var(--bg-alt);border:1px solid var(--line);border-radius:1
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .btn.danger{background:#7a2b2b}
 #tabs{display:flex;gap:6px;padding:10px 16px 0;max-width:1200px;margin:0 auto}
-#tabs button{flex:1;background:var(--navy);border:none;border-radius:16px 16px 0 0;padding:10px 6px;font-weight:700;font-size:12.5px;color:var(--muted)}
+#tabs button{flex:1;background:var(--navy);border:none;border-radius:16px 16px 0 0;padding:10px 2px;font-weight:700;font-size:12px;color:var(--muted)}
+@media (max-width:520px){#tabs{gap:4px;padding-left:10px;padding-right:10px}#tabs button{font-size:11px;padding:10px 0}}
 #tabs button.on{background:var(--gold);color:var(--navy-dark)}
 main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 #banner{display:none;margin:10px 16px 0;padding:9px 12px;border-radius:10px;background:#6b2a22;font-size:12.5px;max-width:1168px}
@@ -50,6 +51,26 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .u{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
 .u h3{margin:0;font-size:13.5px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .u h3 small{font-size:11px;color:var(--muted);font-weight:500}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+table.uni{width:100%;border-collapse:collapse;font-size:13px}
+@media (max-width:520px){table.uni{font-size:11.5px;table-layout:fixed}table.uni th:nth-child(1){width:22%}table.uni th:nth-child(2){width:12%}table.uni th:nth-child(3){width:15%}table.uni th:nth-child(4){width:18%}table.uni th:nth-child(5){width:15%}table.uni th:nth-child(6){width:18%}table.uni th{padding:8px 3px;font-size:9px;letter-spacing:0}table.uni td{padding:8px 3px}table.uni th:first-child,table.uni td:first-child{padding-left:8px;white-space:nowrap}table.uni td small{font-size:9.5px}}
+table.uni th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.uni th:first-child,table.uni td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1}
+table.uni td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.uni td small{display:block;font-size:10.5px;color:var(--muted)}
+table.uni tbody tr[data-det]{cursor:pointer}
+table.uni tbody tr[data-det]:hover td{background:var(--bg-alt)}
+table.uni tr.falta td:nth-child(3){color:var(--gold-soft)}
+table.uni td.pend{color:var(--gold-soft);font-weight:700}
+table.uni td.pend.ok{color:var(--ok)}
+table.uni tfoot td{font-weight:700;border-bottom:none;background:var(--bg-alt)}
+table.uni tfoot td:first-child{background:var(--bg-alt)}
+.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt td{padding:6px 0;border-bottom:1px solid #e3e8f2}
+.dt td.r{text-align:right;white-space:nowrap;padding-left:8px}
+.dt tr.t td{font-weight:700;border-bottom:none}
+.dt small{color:#6b7690}
+.dsec{font-size:11px;color:#6b7690;text-transform:uppercase;letter-spacing:.4px;margin:6px 0 2px}
 .an{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .an h2{margin:0 0 8px;font-size:14px;color:var(--gold)}
 .an table{width:100%;border-collapse:collapse;font-size:13px}
@@ -116,7 +137,8 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
 </header>
 <div id="banner"></div>
 <nav id="tabs">
-  <button data-tab="unidades" class="on">Propietarios</button>
+  <button data-tab="porunidad" class="on">Unidades</button>
+  <button data-tab="unidades">Propietarios</button>
   <button data-tab="pagos">Pagos</button>
   <button data-tab="valores">Valores</button>
   <button data-tab="analisis">Análisis</button>
@@ -138,6 +160,11 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
   <div class="dh">Borrar pago<small id="bdDet"></small></div>
   <div class="db"><div>¿Seguro que querés borrar este pago? Esto no se puede deshacer.</div></div>
   <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="bdOk">Borrar</button></div>
+</dialog>
+<dialog id="dlgDetalle">
+  <div class="dh" id="dtTitulo">Detalle</div>
+  <div class="db" id="dtCuerpo" style="max-height:62vh;overflow:auto"></div>
+  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="dtCopiar">Copiar</button></div>
 </dialog>
 <dialog id="dlgResumen">
   <div class="dh">Resumen por propietario<small>Para copiar y mandar por WhatsApp</small></div>
@@ -183,7 +210,7 @@ const fcorta = f => f.slice(8,10)+"/"+f.slice(5,7);
 const hoyISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 
 const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{}}, luzCargado:false, errorLuz:false,
-                periodo:"todo", tab:"unidades", abiertas:{} };
+                periodo:"todo", tab:"porunidad", abiertas:{} };
 let fb = null;
 
 /* ---------- conexión ---------- */
@@ -285,7 +312,7 @@ function render(){
   const ready = state.luzCargado && Object.keys(state.cargado).length>=DOCS_MES.length+1;
   if(!ready && !state.errorLuz && !state.errorLectura){ $("#main").innerHTML='<div class="empty">Cargando reservas…</div>'; return; }
   const filas = calcular();
-  $("#main").innerHTML = state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : state.tab==="valores" ? vistaValores(filas) : vistaAnalisis(filas);
+  $("#main").innerHTML = state.tab==="porunidad" ? vistaPorUnidad(filas) : state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : state.tab==="valores" ? vistaValores(filas) : vistaAnalisis(filas);
 }
 
 function kpis(filas){
@@ -294,6 +321,64 @@ function kpis(filas){
     <div class="kpi"><span>A pagar</span><b class="num">${money(dev)}</b></div>
     <div class="kpi ok"><span>Pagado</span><b class="num">${money(pag)}</b></div>
     <div class="kpi pend"><span>Pendiente</span><b class="num">${money(dev-pag)}</b></div></div>`;
+}
+
+const num = n => Math.round(n).toLocaleString("es-AR");
+const dec2 = n => n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2});
+const corto = n => n.replace(/^Puerto de la /,"").replace(/^Puerto de /,"").replace(/^Puerto /,"");
+const sem1 = n => n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:1});
+function vistaPorUnidad(filas){
+  let tSem=0,tDev=0,tPag=0,tDias=0;
+  const cuerpo = filas.map(f=>{
+    const dias=f.conf.length; tDias+=dias; tSem+=dias/7; tDev+=f.devengado; tPag+=f.pagado;
+    return `<tr data-det="${f.un.i}" class="${!f.valor&&dias?"falta":""}">
+      <td><b>${f.un.codigo}</b><small>${esc(corto(f.un.nombre))}</small></td>
+      <td>${sem1(dias/7)}<small>${dias} día${dias===1?"":"s"}</small></td>
+      <td>${f.valor?dec2(f.valor/7):"—"}</td>
+      <td>${num(f.devengado)}</td><td>${num(f.pagado)}</td>
+      <td class="pend ${f.pend<=0?"ok":""}">${num(f.pend)}</td></tr>`;
+  }).join("");
+  const sinValor = filas.filter(f=>f.conf.length && !f.valor).length;
+  return kpis(filas)+
+   (sinValor?`<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor} unidad${sinValor>1?"es":""} con alquileres (solapa "Valores").</div>`:"")+
+   `<div class="note">Tocá una unidad para ver el detalle de sus alquileres. En temporada, 7 días son una semana. Valores en pesos.</div>
+   <div class="tw"><table class="uni"><thead><tr><th>Unidad</th><th>Sem.</th><th>$ x día</th><th>Total</th><th>Pagado</th><th>Saldo</th></tr></thead><tbody>${cuerpo}</tbody>
+   <tfoot><tr><td>Total</td><td>${sem1(tSem)}<small>${tDias} días</small></td><td></td><td>${num(tDev)}</td><td>${num(tPag)}</td><td>${num(tDev-tPag)}</td></tr></tfoot></table></div>`;
+}
+
+function filaDetalle(u){ return calcular().find(x=>x.un.i===u); }
+function abrirDetalle(u){
+  const f = filaDetalle(u); if(!f) return;
+  const per = state.periodo==="todo" ? "todo el período" : nombreMes(state.periodo);
+  const dias=f.conf.length;
+  const pagos = Object.values(state.luz.pagos).filter(p=>p.u===u && (state.periodo==="todo"||p.mes===state.periodo)).sort((a,b)=>a.fecha<b.fecha?-1:1);
+  $("#dtTitulo").innerHTML = `${f.un.codigo} · ${esc(f.un.nombre)}<small>${esc(f.prop)} · ${per}</small>`;
+  const est = f.estancias.length ? f.estancias.map(e=>`<tr><td>${esc(e.nombre)}<br><small>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · en lápiz, no se cuenta":""}</small></td><td class="r">${e.lapiz?"—":"$ "+num(e.monto)}</td></tr>`).join("") : '<tr><td><small>Sin alquileres en el período</small></td><td></td></tr>';
+  const pg = pagos.length ? pagos.map(p=>`<tr><td>${p.fecha.split("-").reverse().join("/")}${p.mes?" · "+nombreMes(p.mes):""}${p.nota?"<br><small>"+esc(p.nota)+"</small>":""}</td><td class="r">$ ${num(p.monto)}</td></tr>`).join("") : '<tr><td><small>Todavía no hay pagos</small></td><td></td></tr>';
+  $("#dtCuerpo").innerHTML = `
+    <table class="dt">
+      <tr><td>Semanas alquiladas</td><td class="r">${sem1(dias/7)} (${dias} día${dias===1?"":"s"})</td></tr>
+      <tr><td>Precio de luz por día</td><td class="r">${f.valor?"$ "+dec2(f.valor/7):"sin cargar"}</td></tr>
+      <tr><td>Precio por semana</td><td class="r">${f.valor?"$ "+num(f.valor):"sin cargar"}</td></tr>
+      <tr class="t"><td>Total a pagar</td><td class="r">$ ${num(f.devengado)}</td></tr>
+      <tr><td>Pagado</td><td class="r">$ ${num(f.pagado)}</td></tr>
+      <tr class="t"><td>${f.pend<0?"Saldo a favor":"Saldo pendiente"}</td><td class="r">$ ${num(Math.abs(f.pend))}</td></tr>
+    </table>
+    <div class="dsec">Alquileres</div><table class="dt">${est}</table>
+    <div class="dsec">Pagos registrados</div><table class="dt">${pg}</table>`;
+  state.detalleU = u;
+  $("#dlgDetalle").showModal();
+}
+function textoDetalle(u){
+  const f = filaDetalle(u); if(!f) return "";
+  const per = state.periodo==="todo" ? "todo el período" : nombreMes(state.periodo);
+  const dias=f.conf.length;
+  const l=[`*${f.un.codigo} ${f.un.nombre}* — luz por consumo de inquilinos (${per})`,`Propietario: ${f.prop}`,"",
+    `Semanas alquiladas: ${sem1(dias/7)} (${dias} día${dias===1?"":"s"})`,
+    f.valor?`Precio de luz: $ ${dec2(f.valor/7)} por día ($ ${num(f.valor)} por semana)`:"Precio de luz: sin cargar","","Alquileres:"];
+  f.estancias.filter(e=>!e.lapiz).forEach(e=>l.push(`• ${e.nombre}: ${fcorta(e.ini)} al ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"} → $ ${num(e.monto)}`));
+  l.push("",`Total a pagar: $ ${num(f.devengado)}`,`Pagado: $ ${num(f.pagado)}`,`${f.pend<0?"Saldo a favor":"Saldo pendiente"}: $ ${num(Math.abs(f.pend))}`);
+  return l.join("\n");
 }
 
 function vistaUnidades(filas){
@@ -458,12 +543,17 @@ $("#periodo").addEventListener("change",e=>{ state.periodo=e.target.value; rende
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b){ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); } });
 $("#btnPago").addEventListener("click",()=>abrirPago(null));
 $("#btnResumen").addEventListener("click",()=>{ $("#rsTexto").value = textoResumen(); $("#dlgResumen").showModal(); });
+$("#dtCopiar").addEventListener("click", async ()=>{
+  const t = textoDetalle(state.detalleU);
+  try{ await navigator.clipboard.writeText(t); toast("Copiado"); }catch{ toast("No se pudo copiar"); }
+});
 $("#rsCopiar").addEventListener("click", async ()=>{
   const t = $("#rsTexto"); t.select();
   try{ await navigator.clipboard.writeText(t.value); toast("Copiado"); }catch{ document.execCommand("copy"); toast("Copiado"); }
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
 $("#main").addEventListener("click",e=>{
+  const tr = e.target.closest("tr[data-det]"); if(tr){ abrirDetalle(+tr.dataset.det); return; }
   const b = e.target.closest("[data-act]"); if(!b) return;
   const a=b.dataset.act;
   if(a==="pagar") abrirPago(+b.dataset.u);
