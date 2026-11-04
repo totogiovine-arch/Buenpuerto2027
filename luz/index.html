@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1630">
+<meta name="bp-version" content="20261104-1710">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -116,6 +116,23 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
 .db label{font-size:11px;color:#6b7690;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px}
 .db input,.db select,.db textarea{width:100%;border:1px solid #cfd6e4;border-radius:9px;padding:9px 10px;background:#fff;color:#1b2a4a;font-size:14px}
 .db textarea{min-height:240px;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+#rsChips{display:flex;gap:6px;flex-wrap:wrap}
+#rsChips button{border:1px solid #cfd6e4;background:#fff;color:#1b2a4a;border-radius:14px;padding:6px 11px;font-size:12px;font-weight:600}
+#rsChips button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.rc{border:1px solid #e3e8f2;border-radius:14px;overflow:hidden}
+.rc .top{background:var(--navy);color:#fff;padding:12px 14px}
+.rc .top b{font-size:15px;display:block}
+.rc .top span{font-size:11.5px;color:var(--muted)}
+.rc .big{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 14px;background:#fbf6e8;border-bottom:1px solid #eee3bf}
+.rc .big small{font-size:11px;color:#8a6d1c;text-transform:uppercase;letter-spacing:.4px;display:block}
+.rc .big strong{font-size:24px;color:#1b2a4a}
+.rc .big em{font-style:normal;font-size:11.5px;color:#6b7690;text-align:right}
+.rc .row{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;border-bottom:1px solid #eef1f7;font-size:13px}
+.rc .row small{display:block;color:#6b7690;font-size:11.5px}
+.rc .row .m{font-weight:700;white-space:nowrap}
+.rc .tot{display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:10px 6px;background:#f4f6fb;font-size:11px;color:#6b7690}
+.rc .tot b{display:block;font-size:13.5px;color:#1b2a4a}
+.rc .tot .sd b{color:#b0432f}
 .df{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px 14px}
 .df .btn{background:#e9edf5;color:#1b2a4a}
 .df .btn.gold{background:var(--gold);color:var(--navy-dark)}
@@ -170,8 +187,8 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
 </dialog>
 <dialog id="dlgResumen">
   <div class="dh">Resumen por propietario<small>Para copiar y mandar por WhatsApp</small></div>
-  <div class="db"><textarea id="rsTexto" readonly></textarea></div>
-  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="rsCopiar">Copiar</button></div>
+  <div class="db" style="padding-bottom:4px"><div id="rsChips"></div><div id="rsCard" style="max-height:56vh;overflow:auto"></div><textarea id="rsTexto" readonly hidden></textarea></div>
+  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="rsCopiar">Copiar para WhatsApp</button></div>
 </dialog>
 <div id="toast"></div>
 <div id="ver"></div>
@@ -566,24 +583,48 @@ $("#pgGuardar").addEventListener("click", async ()=>{
 let idBorrar = null;
 $("#bdOk").addEventListener("click", async ()=>{ const id=idBorrar; $("#dlgBorrar").close(); if(id) await borrarPago(id); });
 
-function textoResumen(){
-  const filas = calcular().filter(f=>f.devengado||f.pagado||f.conf.length);
-  const per = state.periodo==="todo" ? "temporada 2026/27" : nombreMes(state.periodo);
+function resumenDatos(){
+  const filas = calcular().filter(f=>f.devengado||f.pagado||f.conf.length||f.inv.length);
   const grupos = {}; filas.forEach(f=>(grupos[f.prop] ||= []).push(f));
-  const bloques = Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es")).map(p=>{
-    const g = grupos[p];
-    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} días → ${money(f.devengado)}${f.inv.length?` (+${f.inv.length} de invitados, no se pagan)`:""}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
-    const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
-    return `*${p}* — luz por consumo de inquilinos, ${per}\n${l.join("\n")}\nTotal ${money(dev)} · Pagado ${money(pag)} · Saldo ${money(dev-pag)}`;
+  return Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es")).map(p=>{
+    const g=grupos[p];
+    return {prop:p, filas:g, dev:g.reduce((a,f)=>a+f.devengado,0), pag:g.reduce((a,f)=>a+f.pagado,0), dias:g.reduce((a,f)=>a+f.conf.length,0)};
   });
-  return bloques.join("\n\n") || "Sin movimientos en el período.";
+}
+function perResumen(){ return state.periodo==="todo" ? "Temporada 2026/27" : nombreMes(state.periodo); }
+function textoPropietario(o){
+  const l=[`*${o.prop}*`,`Luz por consumo de inquilinos · ${perResumen()}`,""];
+  o.filas.forEach(f=>{
+    l.push(`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} día${f.conf.length===1?"":"s"} (${sem1(f.conf.length/7)} sem) → ${money(f.devengado)}${f.inv.length?` · ${f.inv.length} de invitados, no se pagan`:""}`);
+  });
+  l.push("",`Total a pagar: ${money(o.dev)}`);
+  if(o.pag) l.push(`Ya pagado: ${money(o.pag)}`);
+  l.push(`*Saldo: ${money(o.dev-o.pag)}*`);
+  return l.join("\n");
+}
+function textoResumen(){ return resumenDatos().map(textoPropietario).join("\n\n———\n\n") || "Sin movimientos en el período."; }
+function pintarResumen(){
+  const datos=resumenDatos();
+  if(!datos.length){ $("#rsChips").innerHTML=""; $("#rsCard").innerHTML='<div class="empty" style="color:#6b7690">Sin movimientos en el período.</div>'; $("#rsTexto").value=""; return; }
+  if(state.rsSel==null || (state.rsSel!=="todos" && !datos.some(d=>d.prop===state.rsSel))) state.rsSel=datos[0].prop;
+  $("#rsChips").innerHTML = datos.map(d=>`<button data-p="${esc(d.prop)}" class="${state.rsSel===d.prop?"on":""}">${esc(d.prop)}</button>`).join("")
+    + (datos.length>1?`<button data-p="todos" class="${state.rsSel==="todos"?"on":""}">Todos</button>`:"");
+  const sel = state.rsSel==="todos" ? datos : datos.filter(d=>d.prop===state.rsSel);
+  $("#rsCard").innerHTML = sel.map(o=>`<div class="rc" style="margin-bottom:10px">
+    <div class="top"><b>${esc(o.prop)}</b><span>Luz por consumo de inquilinos · ${perResumen()}</span></div>
+    <div class="big"><div><small>${o.dev-o.pag<0?"Saldo a favor":"Saldo a pagar"}</small><strong>${money(Math.abs(o.dev-o.pag))}</strong></div><em>${o.dias} días alquilados<br>${sem1(o.dias/7)} semanas</em></div>
+    ${o.filas.map(f=>`<div class="row"><div>${f.un.codigo} · ${esc(corto(f.un.nombre))}<small>${f.conf.length} día${f.conf.length===1?"":"s"} · ${sem1(f.conf.length/7)} sem${f.inv.length?` · ${f.inv.length} invitado${f.inv.length>1?"s":""} (no se paga)`:""}</small></div><div class="m">${money(f.devengado)}</div></div>`).join("")}
+    <div class="tot"><div>Total<b>${money(o.dev)}</b></div><div>Pagado<b>${money(o.pag)}</b></div><div class="sd">Saldo<b>${money(o.dev-o.pag)}</b></div></div>
+  </div>`).join("");
+  $("#rsTexto").value = state.rsSel==="todos" ? datos.map(textoPropietario).join("\n\n———\n\n") : textoPropietario(sel[0]);
 }
 
 /* ---------- eventos ---------- */
 $("#periodo").addEventListener("change",e=>{ state.periodo=e.target.value; render(); });
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b){ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); } });
 $("#btnPago").addEventListener("click",()=>abrirPago(null));
-$("#btnResumen").addEventListener("click",()=>{ $("#rsTexto").value = textoResumen(); $("#dlgResumen").showModal(); });
+$("#btnResumen").addEventListener("click",()=>{ pintarResumen(); $("#dlgResumen").showModal(); });
+$("#rsChips").addEventListener("click",e=>{ const b=e.target.closest("button[data-p]"); if(b){ state.rsSel=b.dataset.p; pintarResumen(); } });
 $("#dtCuerpo").addEventListener("change",e=>{
   const c = e.target.closest("input[data-ini]"); if(!c) return;
   marcarInvitado(state.detalleU, c.dataset.ini, c.dataset.ult, c.dataset.nom, c.checked);
@@ -593,7 +634,7 @@ $("#dtCopiar").addEventListener("click", async ()=>{
   try{ await navigator.clipboard.writeText(t); toast("Copiado"); }catch{ toast("No se pudo copiar"); }
 });
 $("#rsCopiar").addEventListener("click", async ()=>{
-  const t = $("#rsTexto"); t.select();
+  const t = $("#rsTexto"); t.hidden=false; t.select(); t.hidden=true;
   try{ await navigator.clipboard.writeText(t.value); toast("Copiado"); }catch{ document.execCommand("copy"); toast("Copiado"); }
 });
 document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
