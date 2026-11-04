@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1530">
+<meta name="bp-version" content="20261104-1545">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -28,7 +28,7 @@ select.sel{background:var(--bg-alt);border:1px solid var(--line);border-radius:1
 .btn.gold{background:var(--gold);color:var(--navy-dark);font-weight:700}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .btn.danger{background:#7a2b2b}
-#tabs{display:flex;gap:8px;padding:10px 16px 0;max-width:1200px;margin:0 auto}
+#tabs{display:flex;gap:6px;padding:10px 16px 0;max-width:1200px;margin:0 auto}
 #tabs button{flex:1;background:var(--navy);border:none;border-radius:16px 16px 0 0;padding:10px 6px;font-weight:700;font-size:12.5px;color:var(--muted)}
 #tabs button.on{background:var(--gold);color:var(--navy-dark)}
 main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
@@ -50,6 +50,17 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
 .u{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
 .u h3{margin:0;font-size:13.5px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .u h3 small{font-size:11px;color:var(--muted);font-weight:500}
+.an{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.an h2{margin:0 0 8px;font-size:14px;color:var(--gold)}
+.an table{width:100%;border-collapse:collapse;font-size:13px}
+.an td{padding:6px 0;border-bottom:1px solid var(--line)}
+.an td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:10px}
+.an tr.tot td{font-weight:700;color:var(--gold-soft);border-bottom:none}
+.an tr.neg td.r{color:#ffb0a6}
+.an ol,.an ul{margin:4px 0 0;padding-left:20px;font-size:13px}
+.an li{margin:5px 0}
+.an p{margin:6px 0;font-size:13px}
+.an .mut{color:var(--muted);font-size:11.5px}
 .u .tag{display:inline-block;font-size:10px;background:var(--bg-alt);color:var(--gold-soft);border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:600}
 .u .sub{font-size:11.5px;color:var(--muted);margin:2px 0 8px}
 .u .sub.warn{color:var(--gold-soft)}
@@ -105,9 +116,10 @@ dialog::backdrop{background:rgba(5,10,25,.6)}
 </header>
 <div id="banner"></div>
 <nav id="tabs">
-  <button data-tab="unidades" class="on">Por propietario</button>
+  <button data-tab="unidades" class="on">Propietarios</button>
   <button data-tab="pagos">Pagos</button>
-  <button data-tab="valores">Valores por unidad</button>
+  <button data-tab="valores">Valores</button>
+  <button data-tab="analisis">Análisis</button>
 </nav>
 <main id="main"><div class="empty">Cargando reservas…</div></main>
 
@@ -273,7 +285,7 @@ function render(){
   const ready = state.luzCargado && Object.keys(state.cargado).length>=DOCS_MES.length+1;
   if(!ready && !state.errorLuz && !state.errorLectura){ $("#main").innerHTML='<div class="empty">Cargando reservas…</div>'; return; }
   const filas = calcular();
-  $("#main").innerHTML = state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : vistaValores(filas);
+  $("#main").innerHTML = state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : state.tab==="valores" ? vistaValores(filas) : vistaAnalisis(filas);
 }
 
 function kpis(filas){
@@ -337,6 +349,50 @@ function vistaValores(filas){
      <div><label>$ por semana</label><input class="v" type="number" inputmode="numeric" min="0" step="1" data-u="${f.un.i}" data-campo="valor" value="${f.valor||""}" placeholder="0"></div>
      <div><label>Propietario</label><input type="text" maxlength="40" data-u="${f.un.i}" data-campo="propietario" value="${esc((state.luz.unidades[f.un.i]||{}).propietario ?? f.prop)}"></div>
    </div>`).join("");
+}
+
+function vistaAnalisis(filas){
+  const vals = [...new Set(filas.map(f=>f.valor))];
+  const actual = vals.length===1 ? (vals[0]?`${money(vals[0])} por semana, igual para las 18 unidades`:"todavía sin cargar")
+               : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
+  return `
+  <div class="an"><h2>Valor cargado hoy en la app</h2>
+    <p><b>${actual}</b>. Se divide por 7 y se paga por noche alquilada.</p>
+    <p class="mut">Fuente: informe "Estimación consumo eléctrico Temporada 2027" (130 semanas alquiladas al 27/10/2026, del 19/12 al 6/3). Si cambian las tarifas o las reservas, hay que recalcularlo.</p></div>
+
+  <div class="an"><h2>¿Alcanza lo que cobrás para pagar la luz?</h2>
+    <table>
+      <tr><td>Luz cobrada a inquilinos<br><span class="mut">130 semanas × $84.000</span></td><td class="r">${money(10920000)}</td></tr>
+      <tr class="neg"><td>Reintegro a propietarios (excedente)</td><td class="r">− ${money(2032905)}</td></tr>
+      <tr class="neg"><td>Lavadero (año completo)</td><td class="r">− ${money(1275144)}</td></tr>
+      <tr class="neg"><td>Salón de Juegos (año completo)</td><td class="r">− ${money(414704)}</td></tr>
+      <tr class="tot"><td>Te queda de la luz</td><td class="r">${money(7197247)}</td></tr>
+    </table>
+    <p class="mut">Cobrás casi 3 veces lo que gastás en luz. La garrafa, la limpieza y el sueldo de Elsa van aparte y no están en esta cuenta.</p></div>
+
+  <div class="an"><h2>Cómo se llega a $15.638 por semana</h2>
+    <ol>
+      <li>Para cada unidad se toma el <b>mes de mayor consumo</b> de los veranos 2021 a 2026 (histórico CEVIGE). Es el pico, para no quedar corto.</li>
+      <li>Se divide por <b>4,34 semanas</b> para tener los kWh de una semana pico.</li>
+      <li>Se resta el <b>consumo básico del propietario</b>: 20 kWh por mes (heladera y 4 lamparitas), unos 4,6 kWh por semana.</li>
+      <li>Lo que sobra se multiplica por <b>$392 el kWh</b>, con impuestos (facturas CEVIGE de septiembre 2026). Es el excedente por semana de cada unidad.</li>
+      <li>Se multiplica por las semanas alquiladas de cada unidad. La suma de las 18 unidades da <b>$2.032.905</b>.</li>
+      <li>Dividido las <b>130 semanas</b>: <b>$15.638 por semana</b>.</li>
+    </ol>
+    <table style="margin-top:10px">
+      <tr><td>Factura total estimada de las 18 unidades</td><td class="r">${money(3268947)}</td></tr>
+      <tr><td>La pagan los propietarios (cargo fijo $19.924 por mes + básico)</td><td class="r">${money(1236042)}</td></tr>
+      <tr class="tot"><td>La paga la administración (excedente)</td><td class="r">${money(2032905)}</td></tr>
+    </table></div>
+
+  <div class="an"><h2>Dónde podrías quedarte corto</h2>
+    <ul>
+      <li><b>Un monto único para todas.</b> Las unidades de mucho consumo (Pirámides, Deseado y Caleta, que comparten medidores) quedan cobrando de menos, y las de poco consumo de más. Pirámides sola pesa $395.000 en el informe.</li>
+      <li><b>Suba de tarifa.</b> El kWh de $392 es el de septiembre 2026. Con un 20% de aumento, el reintegro sube unos $406.000.</li>
+      <li><b>Unidades estimadas.</b> Nuevo (como Blest), Jaramillo y Canoa (promedio de Madryn e Iguazú), Frutos, Piray y Epuyén (promedio de Esmeralda y San Carlos) no tienen datos propios.</li>
+      <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y noches sueltas, por eso su total es mayor al del informe.</li>
+      <li><b>Subir el monto.</b> Cada $1.000 más por semana suma unos $130.000 a lo que se paga en las 130 semanas.</li>
+    </ul></div>`;
 }
 
 /* ---------- guardado (siempre con merge: nunca pisa el resto) ---------- */
