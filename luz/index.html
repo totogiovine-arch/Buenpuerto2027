@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-2150">
+<meta name="bp-version" content="20261104-2220">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -573,6 +573,32 @@ function vistaHistorico(){
     <p class="mut">Deseado, Caleta y Pirámides no entran en ese promedio: sus 2 medidores compartidos alimentan también las bombas de agua y otros usos comunes que no son de inquilinos (${money(g.monto)} por año). Las semanas alquiladas son las de todo el calendario cargado, sin lápiz ni invitados.</p></div>`;
 }
 
+/* Mes de verano (dic–mar) de mayor consumo de cada unidad, 2021-22 a 2025-26 (kWh) */
+const SEM_POR_MES = 30.4/7;
+const PICO = {0:[115,"feb 2023","igual a Blest"],1:[308.5,"feb 2023","50% del medidor Pirámides 1"],2:[196,"feb 2023"],3:[115,"feb 2023"],4:[94,"dic 2025"],5:[74,"dic 2025"],
+  6:[394.5,"feb 2022","50% del medidor Pirámides 2"],7:[665.5,"feb 2022","50% de Pirámides 1 + 50% de Pirámides 2",2],8:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],
+  9:[120,"feb 2025"],10:[181,"mar 2022"],11:[148,"mar 2025"],12:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],13:[146,"feb 2023","estimada: promedio de Esmeralda y San Carlos"],
+  14:[170,"ene 2026","estimada: promedio de Madryn e Iguazú"],15:[170,"ene 2026","estimada: promedio de Madryn e Iguazú"],16:[226,"ene 2026"],17:[125,"feb 2023"]};
+function picoCalculo(){
+  const precio = state.luz.precioKwh || PRECIO_KWH_DEF;
+  const dias={}; calcularNoches().filter(n=>!n.lapiz && !esExento(n.u,n.fecha)).forEach(n=>{ dias[n.u]=(dias[n.u]||0)+1; });
+  return UNIDADES.map(un=>{
+    const [kwh,mes,nota,mult]=PICO[un.i], bas=BASICO_KWH_MES*(mult||1), exc=Math.max(0,kwh-bas), kws=exc/SEM_POR_MES, ps=kws*precio, sem=(dias[un.i]||0)/7;
+    return {un,kwh,mes,nota,bas,exc,kws,ps,sem,total:r2(ps*sem)};
+  });
+}
+function vistaPicos(){
+  const filas=picoCalculo(), k1=x=>x.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:1});
+  const tot=filas.reduce((a,f)=>a+f.total,0), sem=filas.reduce((a,f)=>a+f.sem,0), actual=calcular().reduce((a,f)=>a+f.devengado,0), dif=actual-tot;
+  const body=filas.map(f=>`<tr><td>${f.un.codigo} · ${esc(corto(f.un.nombre))}${f.nota?`<small>${esc(f.nota)}</small>`:""}</td><td>${k1(f.kwh)}<small>${f.mes}</small></td><td>${k1(f.bas)}</td><td>${k1(f.exc)}</td><td>${k1(f.kws)}</td><td><b>${money(f.ps)}</b></td><td>${f2(f.sem)}</td><td class="adm"><b>${money(f.total)}</b></td></tr>`).join("");
+  return `<div class="an"><h2>Pico de consumo de verano: lo que se paga por semana alquilada</h2>
+    <p class="mut">Para cada unidad se toma el <b>mes de verano (diciembre a marzo) de mayor consumo</b> de los últimos 5 años, se le resta el básico del propietario del mes (${BASICO_KWH_MES} kWh) y se pasa a semana (÷ ${f2(SEM_POR_MES)} semanas por mes). Se supone que <b>cada semana alquilada consume ese pico</b>. Eso por el precio del kWh y por las semanas alquiladas de cada unidad da lo que se le paga al propietario.</p>
+    <div class="tw" style="margin:8px 0"><table class="hist"><thead><tr><th>Unidad</th><th>Mes pico (kWh)</th><th>Básico propietario</th><th>Excedente (kWh)</th><th>kWh por semana</th><th>$ por semana</th><th>Semanas alquiladas</th><th>Total a pagar</th></tr></thead><tbody>${body}
+    <tr class="tot"><td>Total</td><td></td><td></td><td></td><td></td><td><b>${sem?money(tot/sem):"—"}</b><small>promedio</small></td><td>${f2(sem)}</td><td><b>${money(tot)}</b></td></tr></tbody></table></div>
+    <p>Con el valor por semana cargado hoy, la app calcula <b>${money(actual)}</b>. Este método da <b>${money(tot)}</b>. ${dif>=0?`La app paga <b>${money(dif)}</b> de más (${f2(tot?dif/tot*100:0)}%).`:`La app queda corta por <b>${money(-dif)}</b> (${f2(tot?-dif/tot*100:0)}%).`}</p>
+    <p class="mut">Deseado, Caleta y Pirámides comparten los medidores Pirámides 1 y 2 (se reparte 50% y 50%). Esos medidores también alimentan las bombas de agua, así que su pico puede incluir consumo que no es de inquilinos. Las semanas son las de todo el calendario cargado, sin lápiz ni invitados.</p></div>`;
+}
+
 function vistaAnalisis(filas){
   const vals = [...new Set(filas.map(f=>f.valor))];
   const entrada = `<div class="an" id="valorSemanaBox"><h2>Valor por semana</h2>
@@ -612,6 +638,8 @@ function vistaAnalisis(filas){
     </table></div>
 
   ${vistaHistorico()}
+
+  ${vistaPicos()}
 
   <div class="an"><h2>Dónde podrías quedarte corto</h2>
     <ul>
