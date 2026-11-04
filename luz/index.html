@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="bp-version" content="20261104-1530">
+<meta name="theme-color" content="#152238">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Luz BP">
+<title>Luz a propietarios · Buen Puerto</title>
+<style>
+:root{
+  --navy:#1b2a4a; --navy-dark:#152238; --gold:#d4a94a; --gold-soft:#eec436;
+  --bg:#101c34; --bg-alt:#233457; --line:rgba(255,255,255,.09); --muted:#94a3c2;
+  --white:#fff; --ok:#57c98a; --neg:#ff6b5b; --card:#1b2a4a;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--white);font-family:var(--font);font-size:14px;line-height:1.35}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+#top{position:sticky;top:0;z-index:20;background:var(--navy-dark);border-bottom:1px solid var(--line);padding:10px 16px calc(8px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#top h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.2px;flex:1 1 auto;min-width:150px}
+#top h1 small{display:block;font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:0}
+select.sel{background:var(--bg-alt);border:1px solid var(--line);border-radius:14px;padding:7px 12px;font-size:12.5px;font-weight:600;color:#fff}
+.btn{background:var(--bg-alt);border:none;border-radius:14px;padding:8px 13px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.btn.gold{background:var(--gold);color:var(--navy-dark);font-weight:700}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn.danger{background:#7a2b2b}
+#tabs{display:flex;gap:8px;padding:10px 16px 0;max-width:1200px;margin:0 auto}
+#tabs button{flex:1;background:var(--navy);border:none;border-radius:16px 16px 0 0;padding:10px 6px;font-weight:700;font-size:12.5px;color:var(--muted)}
+#tabs button.on{background:var(--gold);color:var(--navy-dark)}
+main{max-width:1200px;margin:0 auto;padding:12px 16px 70px}
+#banner{display:none;margin:10px 16px 0;padding:9px 12px;border-radius:10px;background:#6b2a22;font-size:12.5px;max-width:1168px}
+#banner.show{display:block}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:12px;padding:10px 12px;border:1px solid var(--line)}
+.kpi span{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi b{display:block;font-size:17px;margin-top:2px}
+.kpi.pend b{color:var(--gold-soft)}
+.kpi.ok b{color:var(--ok)}
+.note{font-size:11.5px;color:var(--muted);margin:6px 0}
+.owner{margin:18px 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:6px}
+.owner h2{margin:0;font-size:14px;color:var(--gold)}
+.owner .tot{font-size:12px;color:var(--muted)}
+.owner .tot b{color:#fff}
+.owner .grow{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.u{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.u h3{margin:0;font-size:13.5px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.u h3 small{font-size:11px;color:var(--muted);font-weight:500}
+.u .tag{display:inline-block;font-size:10px;background:var(--bg-alt);color:var(--gold-soft);border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:600}
+.u .sub{font-size:11.5px;color:var(--muted);margin:2px 0 8px}
+.u .sub.warn{color:var(--gold-soft)}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:left}
+.nums div span{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.nums div b{font-size:14px}
+.nums .pend.pos b{color:var(--gold-soft)} .nums .pend.zero b{color:var(--ok)} .nums .pend.neg b{color:var(--ok)}
+.u .acts{display:flex;gap:6px;margin-top:9px}
+.u .acts .btn{padding:6px 11px;font-size:11.5px}
+.det{display:none;margin-top:9px;border-top:1px solid var(--line);padding-top:7px;font-size:12px}
+.u.open .det{display:block}
+.det div{display:flex;justify-content:space-between;gap:8px;padding:2px 0;color:#dbe3f5}
+.det div em{font-style:normal;color:var(--muted)}
+.det .lap{color:var(--gold-soft)}
+.list .p{display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.p b{font-size:14px;text-align:right}
+.p small{color:var(--muted);font-size:11.5px}
+.p .x{grid-column:1 / -1;display:flex;justify-content:flex-end}
+.val{display:grid;grid-template-columns:1.2fr 1fr 1.1fr;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.val .n{font-size:13px;font-weight:600}
+.val .n small{display:block;font-size:10.5px;color:var(--muted);font-weight:500}
+.val input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 9px;font-size:13.5px}
+.val label{display:block;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.val.falta input.v{border-color:var(--gold)}
+dialog{border:none;border-radius:16px;padding:0;background:#fff;color:#1b2a4a;width:min(440px,94vw)}
+dialog::backdrop{background:rgba(5,10,25,.6)}
+.dh{background:var(--navy);color:#fff;padding:13px 16px;border-bottom:3px solid var(--gold);font-weight:700}
+.dh small{display:block;color:var(--muted);font-weight:500;font-size:11.5px;margin-top:2px}
+.db{padding:14px 16px;display:grid;gap:10px}
+.db label{font-size:11px;color:#6b7690;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px}
+.db input,.db select,.db textarea{width:100%;border:1px solid #cfd6e4;border-radius:9px;padding:9px 10px;background:#fff;color:#1b2a4a;font-size:14px}
+.db textarea{min-height:240px;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.df{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px 14px}
+.df .btn{background:#e9edf5;color:#1b2a4a}
+.df .btn.gold{background:var(--gold);color:var(--navy-dark)}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--navy);border:1px solid var(--gold);color:#fff;padding:9px 16px;border-radius:14px;font-size:12.5px;opacity:0;pointer-events:none;transition:.25s;z-index:60;max-width:90vw}
+#toast.show{opacity:1}
+#ver{position:fixed;right:6px;bottom:3px;font:600 8px/1 var(--font);color:#fff;opacity:.45;pointer-events:none;z-index:50}
+.empty{color:var(--muted);text-align:center;padding:30px 10px}
+@media (max-width:520px){
+  .kpi b{font-size:14.5px}
+  .val{grid-template-columns:1fr 1fr}
+  .val .n{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<header id="top">
+  <h1>Luz a propietarios<small>Buen Puerto · reintegro por consumo de inquilinos</small></h1>
+  <select class="sel" id="periodo" aria-label="Período"></select>
+  <button class="btn" id="btnResumen">📋 Resumen</button>
+  <button class="btn gold" id="btnPago">+ Pago</button>
+</header>
+<div id="banner"></div>
+<nav id="tabs">
+  <button data-tab="unidades" class="on">Por propietario</button>
+  <button data-tab="pagos">Pagos</button>
+  <button data-tab="valores">Valores por unidad</button>
+</nav>
+<main id="main"><div class="empty">Cargando reservas…</div></main>
+
+<dialog id="dlgPago">
+  <div class="dh">Registrar pago<small>Luz a propietario</small></div>
+  <div class="db">
+    <div><label>Unidad</label><select id="pgUnidad"></select></div>
+    <div><label>Monto ($)</label><input id="pgMonto" type="number" inputmode="numeric" min="0" step="1"></div>
+    <div><label>Fecha del pago</label><input id="pgFecha" type="date"></div>
+    <div><label>Corresponde a</label><select id="pgMes"></select></div>
+    <div><label>Nota (opcional)</label><input id="pgNota" type="text" maxlength="120" placeholder="Transferencia, efectivo…"></div>
+  </div>
+  <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="pgGuardar">Guardar pago</button></div>
+</dialog>
+<dialog id="dlgBorrar">
+  <div class="dh">Borrar pago<small id="bdDet"></small></div>
+  <div class="db"><div>¿Seguro que querés borrar este pago? Esto no se puede deshacer.</div></div>
+  <div class="df"><button class="btn" data-close>Cancelar</button><button class="btn gold" id="bdOk">Borrar</button></div>
+</dialog>
+<dialog id="dlgResumen">
+  <div class="dh">Resumen por propietario<small>Para copiar y mandar por WhatsApp</small></div>
+  <div class="db"><textarea id="rsTexto" readonly></textarea></div>
+  <div class="df"><button class="btn" data-close>Cerrar</button><button class="btn gold" id="rsCopiar">Copiar</button></div>
+</dialog>
+<div id="toast"></div>
+<div id="ver"></div>
+
+<script type="module">
+/* ============ Luz a propietarios — Buen Puerto ============
+   Lee las reservas del calendario (solo lectura) y guarda sus datos propios
+   en el documento "luz_propietarios" de la misma base. No toca nada del calendario. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCEYSLt4NDCLZ7xpUR3h8tdVBSjDiZ0lXE",
+  authDomain: "calendario-app-bp.firebaseapp.com",
+  projectId: "calendario-app-bp",
+  storageBucket: "calendario-app-bp.firebasestorage.app",
+  messagingSenderId: "786928589358",
+  appId: "1:786928589358:web:4943d9572bedd483abddbf"
+};
+const COL = "calendario";
+const DOC_LUZ = "luz_propietarios";
+const DOCS_MES = [["sep2026",2026,9],["oct2026",2026,10],["nov2026",2026,11],["dic2026",2026,12],["mar2027",2027,3],["abr2027",2027,4]];
+const SEM_INICIO = Date.UTC(2026,11,19);   // SEM 0 = 19 Dic 2026, 7 noches por semana
+const DIA = 86400000;
+const UNIDADES = [
+ "Puerto Nuevo","Puerto Deseado","Puerto de la Boca","Puerto Blest","Puerto Madero","Puerto Pañuelo",
+ "Caleta Olivia","Puerto Pirámides","Puerto de Frutos","Puerto San Julián","Puerto San Carlos",
+ "Puerto Esmeralda","Puerto Piray","Puerto Epuyén","Puerto Jaramillo","Puerto Canoa","Puerto Madryn","Puerto Iguazú"
+].map((n,i)=>({i,nombre:n,codigo:"BP "+(i+1)}));
+const COMPARTE = {1:"Medidor compartido (Pirámides 1)",6:"Medidor compartido (Pirámides 2)",7:"Medidor compartido (Pirámides 1 y 2)"};
+const PROP_DEFECTO = u => ([12,13,14,15].includes(u) ? "Karin" : u===8 ? "Miguel" : "Familia Pozzi");
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const LISTA_MESES = ["2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04"];
+const nombreMes = ym => { const [y,m]=ym.split("-"); return MESES[+m-1]+" "+y; };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money = n => "$ "+Math.round(n).toLocaleString("es-AR");
+const iso = ms => new Date(ms).toISOString().slice(0,10);
+const fcorta = f => f.slice(8,10)+"/"+f.slice(5,7);
+const hoyISO = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+
+const state = { datos:{}, cargado:{}, errorLectura:false, luz:{unidades:{},pagos:{}}, luzCargado:false, errorLuz:false,
+                periodo:"todo", tab:"unidades", abiertas:{} };
+let fb = null;
+
+/* ---------- conexión ---------- */
+async function conectar(){
+  if(window.__TEST_FB){ fb = window.__TEST_FB; await fb.ready; return; }
+  const V="11.0.2";
+  const [A,F,Au] = await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
+    import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`)
+  ]);
+  const app = A.initializeApp(FIREBASE_CONFIG, "luz");
+  const db = F.getFirestore(app); const auth = Au.getAuth(app);
+  await new Promise((res,rej)=>{ Au.onAuthStateChanged(auth,u=>{ if(u) res(u); }); Au.signInAnonymously(auth).catch(rej); });
+  fb = { db, doc:F.doc, onSnapshot:F.onSnapshot, setDoc:F.setDoc, updateDoc:F.updateDoc, deleteField:F.deleteField };
+}
+
+function escuchar(){
+  const claves = [...DOCS_MES.map(d=>d[0]), "temporada"];
+  claves.forEach(k=>{
+    fb.onSnapshot(fb.doc(fb.db,COL,k), snap=>{
+      state.datos[k] = snap.exists() ? (snap.data().datos||{}) : {};
+      state.cargado[k] = true; render();
+    }, ()=>{ state.errorLectura = true; render(); });
+  });
+  fb.onSnapshot(fb.doc(fb.db,COL,DOC_LUZ), snap=>{
+    const d = snap.exists() ? snap.data() : {};
+    state.luz = { unidades:d.unidades||{}, pagos:d.pagos||{} };
+    state.luzCargado = true; render();
+  }, ()=>{ state.errorLuz = true; render(); });
+}
+
+/* ---------- cálculo de noches ---------- */
+function calcularNoches(){
+  const out = [];
+  const poner = (u,ms,c)=>{
+    if(!c || !c.nombre) return;
+    const color = c.color || "rojo";
+    if(color==="violeta") return;              // bloqueos de administración: no son alquiler
+    out.push({u, fecha:iso(ms), nombre:String(c.nombre).trim(), lapiz: color==="amarillo"});
+  };
+  for(const [key,y,m] of DOCS_MES){
+    const d = state.datos[key]||{};
+    for(const k in d){
+      const [u,s] = k.split("_").map(Number);
+      if(u>17 || s%2!==1) continue;            // solo turno PM = noche dormida
+      poner(u, Date.UTC(y,m-1,(s-1)/2+1), d[k]);
+    }
+  }
+  const t = state.datos.temporada||{};
+  for(const k in t){
+    const [u,s] = k.split("_").map(Number);
+    if(u>17) continue;
+    for(let i=0;i<7;i++) poner(u, SEM_INICIO+(s*7+i)*DIA, t[k]);
+  }
+  return out;
+}
+
+function calcular(){
+  const noches = calcularNoches().filter(n=> state.periodo==="todo" || n.fecha.slice(0,7)===state.periodo);
+  const porU = UNIDADES.map(un=>{
+    const cfg = state.luz.unidades[un.i]||{};
+    const valor = Number(cfg.valor)||0;
+    const mias = noches.filter(n=>n.u===un.i).sort((a,b)=>a.fecha<b.fecha?-1:1);
+    const conf = mias.filter(n=>!n.lapiz), lap = mias.filter(n=>n.lapiz);
+    const devengado = Math.round(conf.length*valor/7);
+    const pagos = Object.entries(state.luz.pagos).map(([id,p])=>({id,...p}))
+      .filter(p=>p.u===un.i && (state.periodo==="todo" || p.mes===state.periodo));
+    const pagado = pagos.reduce((a,p)=>a+(Number(p.monto)||0),0);
+    return { un, valor, prop:(cfg.propietario||"").trim()||PROP_DEFECTO(un.i), conf, lap, devengado, pagado, pend:devengado-pagado, estancias:agrupar(mias,valor) };
+  });
+  return porU;
+}
+function agrupar(mias,valor){
+  const res=[]; let cur=null;
+  for(const n of mias){
+    const sig = iso(Date.parse(n.fecha+"T00:00:00Z")+DIA);
+    if(cur && cur.nombre===n.nombre && cur.lapiz===n.lapiz && cur.ultima===iso(Date.parse(n.fecha+"T00:00:00Z")-DIA)){ cur.ultima=n.fecha; cur.fin=sig; cur.noches++; }
+    else { if(cur) res.push(cur); cur={nombre:n.nombre,lapiz:n.lapiz,ini:n.fecha,ultima:n.fecha,fin:sig,noches:1}; }
+  }
+  if(cur) res.push(cur);
+  res.forEach(e=>e.monto=Math.round(e.noches*valor/7));
+  return res;
+}
+
+/* ---------- pantalla ---------- */
+function render(){
+  const sel = $("#periodo");
+  if(!sel.options.length){
+    sel.innerHTML = '<option value="todo">Todo el período</option>'+LISTA_MESES.map(m=>`<option value="${m}">${nombreMes(m)}</option>`).join("");
+  }
+  sel.value = state.periodo;
+  const ban = $("#banner");
+  const msgs=[];
+  if(state.errorLectura) msgs.push("No pude leer todas las reservas del calendario. Revisá la conexión: los números pueden estar incompletos.");
+  if(state.errorLuz) msgs.push("No hay conexión con la base: puedo mostrar datos pero no guardar. No cargues pagos hasta que vuelva.");
+  ban.textContent = msgs.join(" "); ban.classList.toggle("show", msgs.length>0);
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
+  const ready = state.luzCargado && Object.keys(state.cargado).length>=DOCS_MES.length+1;
+  if(!ready && !state.errorLuz && !state.errorLectura){ $("#main").innerHTML='<div class="empty">Cargando reservas…</div>'; return; }
+  const filas = calcular();
+  $("#main").innerHTML = state.tab==="unidades" ? vistaUnidades(filas) : state.tab==="pagos" ? vistaPagos() : vistaValores(filas);
+}
+
+function kpis(filas){
+  const dev = filas.reduce((a,f)=>a+f.devengado,0), pag = filas.reduce((a,f)=>a+f.pagado,0);
+  return `<div class="cards">
+    <div class="kpi"><span>A pagar</span><b class="num">${money(dev)}</b></div>
+    <div class="kpi ok"><span>Pagado</span><b class="num">${money(pag)}</b></div>
+    <div class="kpi pend"><span>Pendiente</span><b class="num">${money(dev-pag)}</b></div></div>`;
+}
+
+function vistaUnidades(filas){
+  const sinValor = filas.filter(f=>f.conf.length && !f.valor);
+  const lap = filas.reduce((a,f)=>a+f.lap.length,0);
+  let h = kpis(filas);
+  if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor.length} unidad${sinValor.length>1?"es":""} con alquileres (${sinValor.map(f=>f.un.codigo).join(", ")}). Cargalo en la solapa "Valores por unidad".</div>`;
+  if(lap) h += `<div class="note">${lap} noche${lap>1?"s":""} en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
+  const grupos = {};
+  filas.forEach(f=>{ (grupos[f.prop] ||= []).push(f); });
+  for(const prop of Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es"))){
+    const g = grupos[prop];
+    const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
+    h += `<div class="owner"><h2>${esc(prop)}</h2><span class="tot">A pagar <b class="num">${money(dev)}</b> · Pagado <b class="num">${money(pag)}</b> · Pendiente <b class="num">${money(dev-pag)}</b></span><span class="grow"></span></div><div class="grid">`;
+    g.forEach(f=>{
+      const cls = f.pend>0 ? "pos" : f.pend===0 ? "zero" : "neg";
+      const sub = !f.conf.length && !f.lap.length ? "Sin alquileres en el período"
+        : `${f.conf.length} noche${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
+      h += `<div class="u ${state.abiertas[f.un.i]?"open":""}" data-u="${f.un.i}">
+        <h3><span>${f.un.codigo} · ${esc(f.un.nombre)}${COMPARTE[f.un.i]?`<span class="tag">${COMPARTE[f.un.i]}</span>`:""}</span></h3>
+        <div class="sub ${f.conf.length && !f.valor?"warn":""}">${sub}</div>
+        <div class="nums"><div><span>A pagar</span><b class="num">${money(f.devengado)}</b></div>
+          <div><span>Pagado</span><b class="num">${money(f.pagado)}</b></div>
+          <div class="pend ${cls}"><span>${f.pend<0?"A favor":"Pendiente"}</span><b class="num">${money(Math.abs(f.pend))}</b></div></div>
+        <div class="acts"><button class="btn gold" data-act="pagar" data-u="${f.un.i}">+ Pago</button><button class="btn ghost" data-act="det" data-u="${f.un.i}">Ver alquileres</button></div>
+        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} n.${e.lapiz?" · lápiz":""}</em></span><span class="num">${e.lapiz?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  h += `<p class="note" style="margin-top:18px">Se cuenta cada noche dormida en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. La semana del 27/2 al 6/3 de Temp 27 todavía no existe en el calendario, así que no entra.</p>`;
+  return h;
+}
+
+function vistaPagos(){
+  const lista = Object.entries(state.luz.pagos).map(([id,p])=>({id,...p}))
+    .filter(p=>state.periodo==="todo" || p.mes===state.periodo)
+    .sort((a,b)=> (a.fecha<b.fecha?1:-1));
+  if(!lista.length) return '<div class="empty">Todavía no hay pagos cargados'+(state.periodo!=="todo"?" para este mes":"")+'.</div>';
+  const total = lista.reduce((a,p)=>a+(Number(p.monto)||0),0);
+  return `<div class="note">${lista.length} pago${lista.length>1?"s":""} · total <b class="num">${money(total)}</b></div><div class="list">`+
+   lista.map(p=>{
+     const un = UNIDADES[p.u]; const f = p.fecha ? p.fecha.split("-").reverse().join("/") : "";
+     return `<div class="p"><div><b style="text-align:left">${un?un.codigo+" · "+esc(un.nombre):"—"}</b><br><small>${f}${p.mes?" · corresponde a "+nombreMes(p.mes):" · general"}${p.nota?" · "+esc(p.nota):""}</small></div><b class="num">${money(p.monto)}</b>
+     <div class="x"><button class="btn ghost" data-act="borrar" data-id="${esc(p.id)}">Borrar</button></div></div>`;
+   }).join("")+`</div>`;
+}
+
+function vistaValores(filas){
+  return `<p class="note">Acá cargás, por unidad, lo que se le reintegra al propietario por <b>cada semana alquilada</b> (la parte del inquilino del informe de luz). La app lo divide por 7 para pagar por noche. Se guarda solo al salir del casillero.</p>`+
+   filas.map(f=>`<div class="val ${!f.valor?"falta":""}">
+     <div class="n">${f.un.codigo} · ${esc(f.un.nombre)}<small>${COMPARTE[f.un.i]||"Medidor propio"}</small></div>
+     <div><label>$ por semana</label><input class="v" type="number" inputmode="numeric" min="0" step="1" data-u="${f.un.i}" data-campo="valor" value="${f.valor||""}" placeholder="0"></div>
+     <div><label>Propietario</label><input type="text" maxlength="40" data-u="${f.un.i}" data-campo="propietario" value="${esc((state.luz.unidades[f.un.i]||{}).propietario ?? f.prop)}"></div>
+   </div>`).join("");
+}
+
+/* ---------- guardado (siempre con merge: nunca pisa el resto) ---------- */
+function puedeEscribir(){ if(!state.luzCargado || state.errorLuz || !fb){ toast("Sin conexión: no se guardó"); return false; } return true; }
+async function guardarUnidad(u,campo,val){
+  if(!puedeEscribir()) return;
+  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {unidades:{[u]:{[campo]:val}}, actualizado:new Date().toISOString()}, {merge:true}); toast("Guardado"); }
+  catch(e){ console.error(e); toast("No se pudo guardar"); }
+}
+async function guardarPago(p){
+  if(!puedeEscribir()) return false;
+  const id = "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  try{ await fb.setDoc(fb.doc(fb.db,COL,DOC_LUZ), {pagos:{[id]:{...p,creado:new Date().toISOString()}}, actualizado:new Date().toISOString()}, {merge:true}); return true; }
+  catch(e){ console.error(e); toast("No se pudo guardar el pago"); return false; }
+}
+async function borrarPago(id){
+  if(!puedeEscribir()) return;
+  try{ await fb.updateDoc(fb.doc(fb.db,COL,DOC_LUZ), {["pagos."+id]: fb.deleteField(), actualizado:new Date().toISOString()}); toast("Pago borrado"); }
+  catch(e){ console.error(e); toast("No se pudo borrar"); }
+}
+
+/* ---------- diálogos ---------- */
+function abrirPago(u){
+  const filas = calcular();
+  $("#pgUnidad").innerHTML = filas.map(f=>`<option value="${f.un.i}">${f.un.codigo} · ${esc(f.un.nombre)} (${esc(f.prop)})</option>`).join("");
+  $("#pgMes").innerHTML = '<option value="">General (sin mes)</option>'+LISTA_MESES.map(m=>`<option value="${m}">${nombreMes(m)}</option>`).join("");
+  $("#pgFecha").value = hoyISO();
+  $("#pgNota").value = "";
+  $("#pgMes").value = state.periodo==="todo" ? "" : state.periodo;
+  if(u!=null) $("#pgUnidad").value = String(u);
+  const f = filas.find(x=>x.un.i===+$("#pgUnidad").value);
+  $("#pgMonto").value = f && f.pend>0 ? f.pend : "";
+  $("#dlgPago").showModal();
+}
+$("#pgUnidad").addEventListener("change",()=>{
+  const f = calcular().find(x=>x.un.i===+$("#pgUnidad").value); $("#pgMonto").value = f && f.pend>0 ? f.pend : "";
+});
+$("#pgGuardar").addEventListener("click", async ()=>{
+  const monto = Math.round(Number($("#pgMonto").value));
+  if(!(monto>0)){ toast("Poné un monto mayor a cero"); return; }
+  const fecha = $("#pgFecha").value || hoyISO();
+  const ok = await guardarPago({u:+$("#pgUnidad").value, monto, fecha, mes:$("#pgMes").value, nota:$("#pgNota").value.trim()});
+  if(ok){ $("#dlgPago").close(); toast("Pago registrado"); }
+});
+let idBorrar = null;
+$("#bdOk").addEventListener("click", async ()=>{ const id=idBorrar; $("#dlgBorrar").close(); if(id) await borrarPago(id); });
+
+function textoResumen(){
+  const filas = calcular().filter(f=>f.devengado||f.pagado||f.conf.length);
+  const per = state.periodo==="todo" ? "temporada 2026/27" : nombreMes(state.periodo);
+  const grupos = {}; filas.forEach(f=>(grupos[f.prop] ||= []).push(f));
+  const bloques = Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es")).map(p=>{
+    const g = grupos[p];
+    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} noches → ${money(f.devengado)}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
+    const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
+    return `*${p}* — luz por consumo de inquilinos, ${per}\n${l.join("\n")}\nTotal ${money(dev)} · Pagado ${money(pag)} · Saldo ${money(dev-pag)}`;
+  });
+  return bloques.join("\n\n") || "Sin movimientos en el período.";
+}
+
+/* ---------- eventos ---------- */
+$("#periodo").addEventListener("change",e=>{ state.periodo=e.target.value; render(); });
+$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button[data-tab]"); if(b){ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); } });
+$("#btnPago").addEventListener("click",()=>abrirPago(null));
+$("#btnResumen").addEventListener("click",()=>{ $("#rsTexto").value = textoResumen(); $("#dlgResumen").showModal(); });
+$("#rsCopiar").addEventListener("click", async ()=>{
+  const t = $("#rsTexto"); t.select();
+  try{ await navigator.clipboard.writeText(t.value); toast("Copiado"); }catch{ document.execCommand("copy"); toast("Copiado"); }
+});
+document.querySelectorAll("dialog").forEach(d=>d.addEventListener("click",e=>{ if(e.target.closest("[data-close]")) d.close(); }));
+$("#main").addEventListener("click",e=>{
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const a=b.dataset.act;
+  if(a==="pagar") abrirPago(+b.dataset.u);
+  else if(a==="det"){ const u=+b.dataset.u; state.abiertas[u]=!state.abiertas[u]; b.closest(".u").classList.toggle("open",!!state.abiertas[u]); }
+  else if(a==="borrar"){ idBorrar=b.dataset.id; const p=state.luz.pagos[idBorrar]||{}; $("#bdDet").textContent=(UNIDADES[p.u]?UNIDADES[p.u].codigo+" · ":"")+money(p.monto||0); $("#dlgBorrar").showModal(); }
+});
+$("#main").addEventListener("change",e=>{
+  const i = e.target.closest("input[data-campo]"); if(!i) return;
+  const u=+i.dataset.u, campo=i.dataset.campo;
+  guardarUnidad(u,campo, campo==="valor" ? Math.max(0,Math.round(Number(i.value)||0)) : i.value.trim());
+});
+let tt; function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("show"),1800); }
+
+$("#ver").textContent = "v "+document.querySelector('meta[name="bp-version"]').content;
+window.__luz = { calcular, state };    // para pruebas
+conectar().then(escuchar).catch(err=>{ console.error(err); state.errorLuz=true; state.errorLectura=true; render(); });
+</script>
+</body>
+</html>
