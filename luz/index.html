@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1550">
+<meta name="bp-version" content="20261104-1555">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -301,7 +301,7 @@ function vistaUnidades(filas){
   const lap = filas.reduce((a,f)=>a+f.lap.length,0);
   let h = kpis(filas);
   if(sinValor.length) h += `<div class="note" style="color:var(--gold-soft)">⚠ Falta cargar el valor por semana en ${sinValor.length} unidad${sinValor.length>1?"es":""} con alquileres (${sinValor.map(f=>f.un.codigo).join(", ")}). Cargalo en la solapa "Valores por unidad".</div>`;
-  if(lap) h += `<div class="note">${lap} noche${lap>1?"s":""} en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
+  if(lap) h += `<div class="note">${lap} día${lap>1?"s":""} en reserva lápiz (amarillo) no se cuentan hasta que se confirmen.</div>`;
   const grupos = {};
   filas.forEach(f=>{ (grupos[f.prop] ||= []).push(f); });
   for(const prop of Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es"))){
@@ -311,7 +311,7 @@ function vistaUnidades(filas){
     g.forEach(f=>{
       const cls = f.pend>0 ? "pos" : f.pend===0 ? "zero" : "neg";
       const sub = !f.conf.length && !f.lap.length ? "Sin alquileres en el período"
-        : `${f.conf.length} noche${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
+        : `${f.conf.length} día${f.conf.length===1?"":"s"}${f.lap.length?` (+${f.lap.length} en lápiz)`:""} · ${f.valor?money(f.valor)+" por semana":"sin valor por semana"}`;
       h += `<div class="u ${state.abiertas[f.un.i]?"open":""}" data-u="${f.un.i}">
         <h3><span>${f.un.codigo} · ${esc(f.un.nombre)}${COMPARTE[f.un.i]?`<span class="tag">${COMPARTE[f.un.i]}</span>`:""}</span></h3>
         <div class="sub ${f.conf.length && !f.valor?"warn":""}">${sub}</div>
@@ -319,12 +319,12 @@ function vistaUnidades(filas){
           <div><span>Pagado</span><b class="num">${money(f.pagado)}</b></div>
           <div class="pend ${cls}"><span>${f.pend<0?"A favor":"Pendiente"}</span><b class="num">${money(Math.abs(f.pend))}</b></div></div>
         <div class="acts"><button class="btn gold" data-act="pagar" data-u="${f.un.i}">+ Pago</button><button class="btn ghost" data-act="det" data-u="${f.un.i}">Ver alquileres</button></div>
-        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} n.${e.lapiz?" · lápiz":""}</em></span><span class="num">${e.lapiz?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
+        <div class="det">${f.estancias.length ? f.estancias.map(e=>`<div class="${e.lapiz?"lap":""}"><span>${esc(e.nombre)} <em>${fcorta(e.ini)} → ${fcorta(e.fin)} · ${e.noches} día${e.noches===1?"":"s"}${e.lapiz?" · lápiz":""}</em></span><span class="num">${e.lapiz?"—":money(e.monto)}</span></div>`).join("") : '<div><em>Nada para mostrar</em></div>'}</div>
       </div>`;
     });
     h += `</div>`;
   }
-  h += `<p class="note" style="margin-top:18px">Se cuenta cada noche dormida en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. La semana del 27/2 al 6/3 de Temp 27 todavía no existe en el calendario, así que no entra.</p>`;
+  h += `<p class="note" style="margin-top:18px">Se cuenta cada día alquilado en el calendario (reservas rojas, verdes y grises). Los bloqueos violetas no cuentan. La semana del 27/2 al 6/3 de Temp 27 todavía no existe en el calendario, así que no entra.</p>`;
   return h;
 }
 
@@ -343,7 +343,7 @@ function vistaPagos(){
 }
 
 function vistaValores(filas){
-  return `<p class="note">Acá cargás, por unidad, lo que se le reintegra al propietario por <b>cada semana alquilada</b> (la parte del inquilino del informe de luz). La app lo divide por 7 para pagar por noche. Se guarda solo al salir del casillero.</p>`+
+  return `<p class="note">Acá cargás, por unidad, lo que se le reintegra al propietario por <b>cada semana alquilada</b> (la parte del inquilino del informe de luz). La app lo divide por 7 para pagar por día alquilado. Se guarda solo al salir del casillero.</p>`+
    filas.map(f=>`<div class="val ${!f.valor?"falta":""}">
      <div class="n">${f.un.codigo} · ${esc(f.un.nombre)}<small>${COMPARTE[f.un.i]||"Medidor propio"}</small></div>
      <div><label>$ por semana</label><input class="v" type="number" inputmode="numeric" min="0" step="1" data-u="${f.un.i}" data-campo="valor" value="${f.valor||""}" placeholder="0"></div>
@@ -357,7 +357,7 @@ function vistaAnalisis(filas){
                : `entre ${money(Math.min(...vals))} y ${money(Math.max(...vals))} por semana, según la unidad`;
   return `
   <div class="an"><h2>Valor cargado hoy en la app</h2>
-    <p><b>${actual}</b>. Se divide por 7 y se paga por noche alquilada.</p>
+    <p><b>${actual}</b>. Se divide por 7 y se paga por día alquilado.</p>
     <p class="mut">Fuente: informe "Estimación consumo eléctrico Temporada 2027" (130 semanas alquiladas al 27/10/2026, del 19/12 al 6/3). Si cambian las tarifas o las reservas, hay que recalcularlo.</p></div>
 
   <div class="an"><h2>¿Alcanza lo que cobrás para pagar la luz?</h2>
@@ -390,7 +390,7 @@ function vistaAnalisis(filas){
       <li><b>Un monto único para todas.</b> Las unidades de mucho consumo (Pirámides, Deseado y Caleta, que comparten medidores) quedan cobrando de menos, y las de poco consumo de más. Pirámides sola pesa $395.000 en el informe.</li>
       <li><b>Suba de tarifa.</b> El kWh de $392 es el de septiembre 2026. Con un 20% de aumento, el reintegro sube unos $406.000.</li>
       <li><b>Unidades estimadas.</b> Nuevo (como Blest), Jaramillo y Canoa (promedio de Madryn e Iguazú), Frutos, Piray y Epuyén (promedio de Esmeralda y San Carlos) no tienen datos propios.</li>
-      <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y noches sueltas, por eso su total es mayor al del informe.</li>
+      <li><b>Semanas fuera del informe.</b> La app también cuenta septiembre a diciembre y días sueltos, por eso su total es mayor al del informe.</li>
       <li><b>Subir el monto.</b> Cada $1.000 más por semana suma unos $130.000 a lo que se paga en las 130 semanas.</li>
     </ul></div>`;
 }
@@ -446,7 +446,7 @@ function textoResumen(){
   const grupos = {}; filas.forEach(f=>(grupos[f.prop] ||= []).push(f));
   const bloques = Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"es")).map(p=>{
     const g = grupos[p];
-    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} noches → ${money(f.devengado)}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
+    const l = g.map(f=>`• ${f.un.codigo} ${f.un.nombre}: ${f.conf.length} días → ${money(f.devengado)}${f.pagado?` (pagado ${money(f.pagado)})`:""}`);
     const dev = g.reduce((a,f)=>a+f.devengado,0), pag = g.reduce((a,f)=>a+f.pagado,0);
     return `*${p}* — luz por consumo de inquilinos, ${per}\n${l.join("\n")}\nTotal ${money(dev)} · Pagado ${money(pag)} · Saldo ${money(dev-pag)}`;
   });
