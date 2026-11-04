@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="bp-version" content="20261104-1545">
+<meta name="bp-version" content="20261104-1550">
 <meta name="theme-color" content="#152238">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Luz BP">
@@ -480,6 +480,29 @@ let tt; function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.
 $("#ver").textContent = "v "+document.querySelector('meta[name="bp-version"]').content;
 window.__luz = { calcular, state };    // para pruebas
 conectar().then(escuchar).catch(err=>{ console.error(err); state.errorLuz=true; state.errorLectura=true; render(); });
+</script>
+<script>
+/* Actualización automática: si hay una versión nueva publicada, se recarga sola (como el calendario) */
+(function(){
+  var meta=document.querySelector('meta[name="bp-version"]'), actual=meta?meta.content:'', chequeando=false, ultimo=0;
+  function chequear(){
+    var ahora=Date.now();
+    if(chequeando||!actual||ahora-ultimo<60000||location.protocol.indexOf('http')!==0) return;
+    chequeando=true; ultimo=ahora;
+    fetch(location.pathname+'?chk='+ahora,{cache:'no-store'}).then(function(r){return r.ok?r.text():'';}).then(function(html){
+      var m=html.match(/<meta name="bp-version" content="([^"]+)"/), nueva=m&&m[1];
+      if(!nueva||nueva<=actual) return;
+      var clave='luz-recarga-'+nueva;
+      try{ if(sessionStorage.getItem(clave)) return; sessionStorage.setItem(clave,'1'); }catch(e){}
+      if(document.querySelector('dialog[open]')){ ultimo=0; return; }
+      var t=document.getElementById('toast'); if(t){ t.textContent='Hay una versión nueva. Actualizando…'; t.classList.add('show'); }
+      setTimeout(function(){ location.replace(location.pathname+'?v='+nueva); },800);
+    }).catch(function(){}).then(function(){ chequeando=false; });
+  }
+  window.addEventListener('load',function(){ setTimeout(chequear,1500); });
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') chequear(); });
+  window.addEventListener('pageshow',function(e){ if(e.persisted) chequear(); });
+})();
 </script>
 </body>
 </html>
