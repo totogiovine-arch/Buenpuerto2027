@@ -220,6 +220,7 @@
   .btn-borrar{background:#f1f2f4;color:var(--text);}
   .btn-cerrar{background:transparent;color:var(--muted);}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -1121,7 +1122,9 @@
     cacheDatosPorVista[vistaActual] = data; // actualización local inmediata (optimista)
     const ref = window.__fb.doc(window.__fb.db, COLECCION_FIRESTORE, vistaActual);
     const vistaDelGuardado = vistaActual;
-    window.__fb.setDoc(ref, {datos: data}).catch(e=>{
+    window.__fb.setDoc(ref, {datos: data}).then(()=>{
+      if(window.__programarSyncCalendario) window.__programarSyncCalendario();
+    }).catch(e=>{
       console.error("Error guardando en Firestore:", e);
       marcarConexion(vistaDelGuardado, false);
       mostrarToast("No se pudo guardar en la nube — revisá tu conexión a internet.");
@@ -2596,19 +2599,214 @@
     return lineas.join("\r\n");
   }
 
-  document.getElementById("btnExportarCal").addEventListener("click", ()=>{
-    const contenido = generarICS();
-    const blob = new Blob([contenido], {type: "text/calendar;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "buen-puerto-reservas.ics";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(()=> URL.revokeObjectURL(url), 2000);
-    mostrarToast("Listo — se descargó el archivo. Importalo en Google Calendar (calendar.google.com → Ajustes → Importar).");
-  });
+
+  // ---- Sincronización directa con Google Calendar (calendario "Reservas Buen Puerto") ----
+  // Crea / actualiza / borra los eventos de INGRESO y EGRESO para que el calendario quede
+  // siempre igual a la app. Solo toca eventos creados por la app (iCalUID que termina en @buenpuerto).
+  const GCAL_CLIENT_ID = "786928589358-4u765ripcteajcj7r33gb080qmp85b6g.apps.googleusercontent.com";
+  const GCAL_CALENDAR_ID = "8d46e9f24ee572ce43ac3dd05ad59a2ea58691d2d1a009567d72553cd5d7d901@group.calendar.google.com";
+  const GCAL_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+  const GCAL_TZ = "America/Argentina/Buenos_Aires";
+  let gcalToken = null, gcalTokenVence = 0, gcalTokenClient = null, gcalSincronizando = false, gcalTimerAuto = null;
+  try{
+    const t = JSON.parse(sessionStorage.getItem("bp_gcal_token")||"null");
+    if(t && t.vence > Date.now()+60000){ gcalToken = t.token; gcalTokenVence = t.vence; }
+  }catch(e){}
+
+  function gcalTokenValido(){ return gcalToken && gcalTokenVence > Date.now()+60000; }
+
+  function gcalPedirToken(interactivo){
+    return new Promise((resolve, reject)=>{
+      if(gcalTokenValido()) return resolve(gcalToken);
+      if(!interactivo) return reject(new Error("sin-token"));
+      if(!(window.google && google.accounts && google.accounts.oauth2)) return reject(new Error("gis-no-cargado"));
+      gcalTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GCAL_CLIENT_ID,
+        scope: GCAL_SCOPE,
+        callback: (resp)=>{
+          if(resp && resp.access_token){
+            gcalToken = resp.access_token;
+            gcalTokenVence = Date.now() + (Number(resp.expires_in||3600)*1000);
+            try{ sessionStorage.setItem("bp_gcal_token", JSON.stringify({token:gcalToken, vence:gcalTokenVence})); }catch(e){}
+            resolve(gcalToken);
+          } else {
+            reject(new Error((resp && resp.error) || "sin-permiso"));
+          }
+        },
+        error_callback: (err)=> reject(new Error((err && err.type) || "popup-cerrado"))
+      });
+      gcalTokenClient.requestAccessToken({prompt: ""});
+    });
+  }
+
+  async function gcalFetch(ruta, opciones){
+    opciones = opciones || {};
+    const base = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(GCAL_CALENDAR_ID);
+    for(let intento=0; intento<4; intento++){
+      const r = await fetch(base + ruta, Object.assign({}, opciones, {
+        headers: Object.assign({"Authorization":"Bearer " + gcalToken, "Content-Type":"application/json"}, opciones.headers||{})
+      }));
+      if((r.status === 429 || r.status === 403) && intento < 3){
+        const txt = r.status === 403 ? await r.clone().text() : "";
+        if(r.status === 429 || /rateLimit|quota/i.test(txt)){
+          await new Promise(res=> setTimeout(res, 800*(intento+1)));
+          continue;
+        }
+      }
+      if(r.status === 401){ gcalToken = null; gcalTokenVence = 0; try{ sessionStorage.removeItem("bp_gcal_token"); }catch(e){} throw new Error("token-vencido"); }
+      if(!r.ok && r.status !== 410 && r.status !== 404){ throw new Error("gcal " + r.status + " " + (await r.text()).slice(0,200)); }
+      if(r.status === 204 || opciones.method === "DELETE") return null;
+      return r.json();
+    }
+    throw new Error("gcal reintentos agotados");
+  }
+
+  function gcalHoraLocal(fechaISO, hh, mm){
+    return {dateTime: fechaISO + "T" + pad2(hh) + ":" + pad2(mm) + ":00", timeZone: GCAL_TZ};
+  }
+
+  // Arma la lista completa de eventos que DEBERÍAN estar en el calendario (ingresos + egresos)
+  function gcalEventosDeseados(){
+    const deseados = [];
+    Object.keys(VISTAS).forEach(vistaKey=>{
+      const vista = VISTAS[vistaKey];
+      const datosVista = obtenerDatosDeVista(vistaKey);
+      const ultima = vista.columnas.length - 1;
+      UNIDADES.forEach((u, uIdx)=>{
+        agruparGenerico(datosVista, vista.columnas, uIdx).forEach(g=>{
+          if(!g.ocupado) return;
+          if(g.color === "violeta") return;                         // BLOQUEADO: no es reserva
+          if(/tempo\s*alta/i.test(g.nombre||"")) return;              // bloqueo de temporada en Diciembre
+          const nombre = (g.nombre || g.nota || "Reserva").trim();
+          const lapiz = g.color === "amarillo" ? " (lápiz)" : "";
+          let fechaIn, fechaOut, hayIngreso, hayEgreso;
+          if(vista.esDiario){
+            fechaIn = vista.columnas[g.inicio].inicio;
+            hayIngreso = g.inicio !== 0;                          // si arranca en la 1ª columna viene del mes anterior
+            if(g.fin === ultima){ hayEgreso = false; fechaOut = null; } // sigue en el mes siguiente
+            else if(g.fin % 2 === 0){ hayEgreso = true; fechaOut = vista.columnas[g.fin].inicio; }
+            else { hayEgreso = true; fechaOut = isoLocal(sumarDias(vista.columnas[g.fin].inicio, 1)); }
+          } else {
+            fechaIn = vista.columnas[g.inicio].inicio;
+            fechaOut = isoLocal(sumarDias(vista.columnas[g.fin].inicio, 7));
+            hayIngreso = true; hayEgreso = true;
+          }
+          const desc = "Estadía del " + fechaLegible(fechaIn) + (fechaOut ? " al " + fechaLegible(fechaOut) + " (sale 10:00 hs)" : " (continúa el mes siguiente)") +
+                       (g.nota ? " — " + g.nota : "") + "\nCargado desde la app Buen Puerto";
+          const base = vistaKey + "-" + uIdx + "-" + g.inicio + "-" + g.fin;
+          if(hayIngreso){
+            deseados.push({
+              iCalUID: "bp-" + base + "@buenpuerto",
+              summary: "Ingreso: " + nombre + lapiz + " — " + u.nombre + " (" + u.codigo + ")",
+              description: desc,
+              start: gcalHoraLocal(fechaIn, 14, 0), end: gcalHoraLocal(fechaIn, 15, 0)
+            });
+          }
+          if(hayEgreso && fechaOut){
+            deseados.push({
+              iCalUID: "bp-eg-" + base + "@buenpuerto",
+              summary: "Egreso: " + nombre + lapiz + " — " + u.nombre + " (" + u.codigo + ")",
+              description: desc,
+              start: gcalHoraLocal(fechaOut, 10, 0), end: gcalHoraLocal(fechaOut, 10, 30)
+            });
+          }
+        });
+      });
+    });
+    return deseados;
+  }
+
+  function gcalMismoEvento(a, b){
+    const f = x=> x && (x.dateTime ? x.dateTime.slice(0,16) : x.date);
+    return a.summary === b.summary && (a.description||"") === (b.description||"") &&
+           f(a.start) === f(b.start) && f(a.end) === f(b.end) && !b.start.date === !a.start.date;
+  }
+
+  async function sincronizarCalendario(interactivo){
+    if(gcalSincronizando) return;
+    if(typeof bloqueadoSinConexion === "function" && bloqueadoSinConexion()){
+      if(interactivo) mostrarToast("Sin conexión — no se puede sincronizar el calendario ahora.");
+      return;
+    }
+    // Solo sincronizar con datos reales de la nube: si alguna pestaña todavía no cargó, esperar
+    const faltan = Object.keys(VISTAS).filter(v=> !(v in cacheDatosPorVista));
+    if(faltan.length){
+      if(interactivo) mostrarToast("Esperá unos segundos a que termine de cargar todo y volvé a tocar 📅.");
+      else { clearTimeout(gcalTimerAuto); gcalTimerAuto = setTimeout(()=> sincronizarCalendario(false), 8000); }
+      return;
+    }
+    gcalSincronizando = true;
+    const btn = document.getElementById("btnExportarCal");
+    if(btn) btn.style.opacity = "0.5";
+    try{
+      await gcalPedirToken(interactivo);
+      if(interactivo) mostrarToast("Sincronizando con Google Calendar…");
+
+      // 1) Eventos actuales del calendario creados por la app
+      const existentes = {};
+      let pageToken = "";
+      do{
+        const q = "?maxResults=2500&singleEvents=true&showDeleted=false" + (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
+        const r = await gcalFetch("/events" + q);
+        (r.items||[]).forEach(ev=>{
+          if(ev.iCalUID && /@buenpuerto$/.test(ev.iCalUID)) existentes[ev.iCalUID] = ev;
+        });
+        pageToken = r.nextPageToken || "";
+      } while(pageToken);
+
+      // 2) Crear / actualizar
+      const deseados = gcalEventosDeseados();
+      const vistos = {};
+      let creados = 0, actualizados = 0, borrados = 0;
+      for(const d of deseados){
+        if(vistos[d.iCalUID]) continue;
+        vistos[d.iCalUID] = true;
+        const cuerpo = {summary:d.summary, description:d.description, start:d.start, end:d.end,
+                        reminders:{useDefault:false, overrides:[{method:"popup", minutes:60}]}};
+        const ex = existentes[d.iCalUID];
+        if(!ex){
+          await gcalFetch("/events", {method:"POST", body: JSON.stringify(Object.assign({iCalUID:d.iCalUID}, cuerpo))});
+          creados++;
+        } else if(!gcalMismoEvento(d, ex)){
+          await gcalFetch("/events/" + encodeURIComponent(ex.id), {method:"PUT", body: JSON.stringify(Object.assign({iCalUID:d.iCalUID}, cuerpo))});
+          actualizados++;
+        }
+      }
+      // 3) Borrar los que ya no existen en la app
+      for(const uid of Object.keys(existentes)){
+        if(!vistos[uid]){
+          await gcalFetch("/events/" + encodeURIComponent(existentes[uid].id), {method:"DELETE"});
+          borrados++;
+        }
+      }
+      try{ localStorage.setItem("bp_gcal_ultima_sync", String(Date.now())); }catch(e){}
+      if(interactivo || creados || actualizados || borrados){
+        mostrarToast("Calendario al día ✓ (" + creados + " nuevos, " + actualizados + " cambiados, " + borrados + " borrados)");
+      }
+    } catch(e){
+      console.error("Sync Google Calendar:", e);
+      if(interactivo){
+        const m = String(e && e.message || e);
+        if(m === "gis-no-cargado") mostrarToast("No se pudo cargar el acceso a Google. Revisá la conexión y probá de nuevo.");
+        else if(/popup|sin-permiso|access_denied/.test(m)) mostrarToast("No se dio permiso a Google Calendar — tocá 📅 de nuevo para reintentar.");
+        else if(m === "token-vencido") mostrarToast("Se venció el permiso de Google — tocá 📅 de nuevo.");
+        else mostrarToast("No se pudo sincronizar con Google Calendar — probá de nuevo en un rato.");
+      }
+    } finally {
+      gcalSincronizando = false;
+      if(btn) btn.style.opacity = "";
+    }
+  }
+
+  // Sincronización automática después de guardar (solo si ya hay permiso vigente en esta sesión)
+  window.__programarSyncCalendario = function(){
+    if(!gcalTokenValido()) return;
+    clearTimeout(gcalTimerAuto);
+    gcalTimerAuto = setTimeout(()=> sincronizarCalendario(false), 8000);
+  };
+
+  document.getElementById("btnExportarCal").title = "Sincronizar con Google Calendar";
+  document.getElementById("btnExportarCal").addEventListener("click", ()=> sincronizarCalendario(true));
 
   // Ya se armó la pantalla por primera vez: ahora sí activamos la escucha en vivo
   // de las 5 pestañas (así el buscador, "Hoy" y la exportación siempre tienen datos frescos,
