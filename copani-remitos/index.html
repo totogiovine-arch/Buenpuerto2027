@@ -73,19 +73,50 @@
   table.det{font-size:14px;margin-bottom:4px}
   table.det td{padding:7px 6px}
   table.det tr.tot td{font-weight:700;border-top:2px solid var(--linea);border-bottom:0}
+  .movil{display:none}
   @media (max-width:820px){
-    form.grid{grid-template-columns:1fr 1fr}
+    body{font-size:14px}
+    header{padding:12px 14px}
+    h1{font-size:22px}
+    header small{font-size:12px}
+    main{padding:10px 10px 40px}
+    .deuda{padding:12px 14px;gap:10px;margin-bottom:10px}
+    .deuda .lbl{font-size:11px}
+    .deuda .val{font-size:28px}
+    .deuda .sub{font-size:11.5px}
+    .deuda .btn,.deuda .btn2{padding:7px 11px;font-size:13px}
+    .panel{padding:12px;margin-bottom:10px}
+    .panel h2{font-size:15px;margin-bottom:8px}
+    form.grid{grid-template-columns:1fr 1.25fr 1.25fr;gap:6px}
     form.grid .full{grid-column:1/-1}
-    table.main thead{display:none}
-    table.main,table.main tbody,table.main tfoot,table.main tr,table.main td{display:block;width:100%}
-    table.main tbody tr{border:1px solid var(--linea);border-radius:10px;margin-bottom:10px;padding:6px 4px}
-    table.main td{border:0;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:right}
-    table.main td::before{content:attr(data-l);font-weight:600;color:var(--choco2);font-size:12px;text-transform:uppercase;text-align:left}
-    table.main td.accd::before{content:""}
-    table.main td.cen{text-align:right}
-    .pagocel{justify-content:end;grid-template-columns:auto auto auto}
-    table.main tfoot td:empty{display:none}
-    .toolbar input{max-width:none;flex:1}
+    form.grid label{font-size:11px;margin-bottom:2px}
+    form.grid input{padding:7px 8px;font-size:14px}
+    form.grid .btn,form.grid .btn2{padding:7px 12px;font-size:13px}
+    .toolbar{gap:6px;margin-bottom:8px}
+    .toolbar input{max-width:none;flex:1;padding:6px 8px;font-size:13px;min-width:0}
+    .toolbar .sp{display:none}
+    #copiar{display:none}
+    table.main{display:none}
+    .movil{display:block}
+    .rc{border:1px solid var(--linea);border-radius:10px;padding:9px 10px;margin-bottom:7px}
+    .rc .l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+    .rc .n{font-weight:700;font-size:15px}
+    .rc .f{color:var(--gris);font-size:12.5px;margin-left:6px;font-weight:400}
+    .rc .imp{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .rc .l2{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px}
+    .rc .est{font-size:12.5px;color:var(--gris);line-height:1.35}
+    .rc .est b{font-variant-numeric:tabular-nums}
+    .rc .bts{display:flex;gap:4px;flex-shrink:0}
+    .rc .bts button{padding:4px 8px;font-size:12px;border-radius:7px}
+    .chip{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;margin-top:2px}
+    .chip.ok{background:#e3f3e9;color:var(--verde)}
+    .chip.pd{background:#fde3e1;color:#b3201b}
+    .chip.ex{background:#e3f3e9;color:var(--verde)}
+    .tot-m{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12.5px;border-top:2px solid var(--linea);padding-top:8px;margin-top:4px}
+    .tot-m div{display:flex;justify-content:space-between}
+    .tot-m b{font-variant-numeric:tabular-nums}
+    .modal{padding:16px}
+    .modal h3{font-size:16px}
   }
 </style>
 </head>
@@ -116,7 +147,7 @@
   <section class="panel">
     <div class="toolbar">
       <h2 style="margin:0">Remitos</h2>
-      <input id="buscar" placeholder="Buscar n° de remito…">
+      <input id="buscar" placeholder="Buscar n°…">
       <div class="sp"></div>
       <button class="btn2 mini" id="copiar">Copiar para Excel</button>
     </div>
@@ -125,6 +156,7 @@
       <tbody id="lista"></tbody>
       <tfoot id="pie"></tfoot>
     </table>
+    <div class="movil" id="listaMov"></div>
   </section>
 </main>
 
@@ -338,7 +370,13 @@
     if(detId&&$("mDet").classList.contains("on")) pintarDetalle();
 
     const v=visibles();
-    if(!v.length){$("lista").innerHTML=`<tr><td colspan="7" class="vacio">${remitos.length?"No hay remitos con esa búsqueda.":"Todavía no cargaste remitos."}</td></tr>`;$("pie").innerHTML="";return}
+    if(!v.length){const t=remitos.length?"No hay remitos con esa búsqueda.":"Todavía no cargaste remitos.";$("lista").innerHTML=`<tr><td colspan="7" class="vacio">${t}</td></tr>`;$("pie").innerHTML="";$("listaMov").innerHTML=`<div class="vacio">${t}</div>`;return}
+    $("listaMov").innerHTML=v.map(r=>{const c=calc(r);
+      const est=c.pag?`Pagado <b>${fmt.format(c.pag)}</b><br>`:"Sin pagos<br>";
+      const chip=c.exceso?`<span class="chip ex">Excedente ${fmt.format(c.exceso)}</span>`:c.saldo?`<span class="chip pd">Saldo ${fmt.format(c.saldo)}</span>`:`<span class="chip ok">Cancelado</span>`;
+      return `<div class="rc"><div class="l1"><span class="n">${esc(r.numero)}<span class="f">${fF(r.fecha)}</span></span><span class="imp">${fmt.format(c.imp)}</span></div>
+        <div class="l2"><div class="est">${est}${chip}</div><div class="bts"><button class="btn-ok" data-a="pago" data-id="${r.id}">+ Pago</button><button class="btn2" data-a="det" data-id="${r.id}">Detalle</button><button class="btn2" data-a="edit" data-id="${r.id}" title="Editar">✎</button><button class="btn2" data-a="del" data-id="${r.id}" title="Borrar">✕</button></div></div></div>`}).join("")+
+      (()=>{const t=k=>fmt.format(v.reduce((a,r)=>a+calc(r)[k],0));return `<div class="tot-m"><div><span>Importe</span><b>${t("imp")}</b></div><div><span>Pagado</span><b>${t("pag")}</b></div><div><span>Excedente</span><b style="color:var(--verde)">${t("exceso")}</b></div><div><span>Saldo</span><b style="color:var(--rojo)">${t("saldo")}</b></div></div>`})();
     $("lista").innerHTML=v.map(r=>{const c=calc(r),n=pagosDe(r).length;return `<tr>
       <td data-l="Remito"><b>${esc(r.numero)}</b></td><td data-l="Fecha">${fF(r.fecha)}</td>
       <td data-l="Importe" class="num">${mon(c.imp)}</td>
@@ -352,12 +390,13 @@
       <td data-l="Excedente" class="num exc">${mon(s("exceso"))}</td><td data-l="Saldo pendiente" class="num pend">${mon(s("saldo"))}</td><td></td></tr>`;
     ajustarMon();
   }
-  $("lista").addEventListener("click",e=>{const b=e.target.closest("button[data-a]");if(!b)return;const id=b.dataset.id,a=b.dataset.a;
+  const clickLista=e=>{const b=e.target.closest("button[data-a]");if(!b)return;const id=b.dataset.id,a=b.dataset.a;
     if(a==="edit")editar(id);
     else if(a==="pago")abrirPago(id);
     else if(a==="det")abrirDetalle(id);
     else{const r=remitos.find(x=>x.id===id);if(!r)return;borrarId=id;const c=calc(r);
-      $("confP").textContent=`Remito ${r.numero} por ${fmt.format(r.importe)}`+(c.pag?`, con ${fmt.format(c.pag)} en pagos (también se borran)`:"")+". No se puede deshacer.";abrir("mConf")}});
+      $("confP").textContent=`Remito ${r.numero} por ${fmt.format(r.importe)}`+(c.pag?`, con ${fmt.format(c.pag)} en pagos (también se borran)`:"")+". No se puede deshacer.";abrir("mConf")}};
+  $("lista").addEventListener("click",clickLista);$("listaMov").addEventListener("click",clickLista);
 
   $("copiar").onclick=async()=>{
     const v=visibles();if(!v.length){toast("No hay nada para copiar");return}
