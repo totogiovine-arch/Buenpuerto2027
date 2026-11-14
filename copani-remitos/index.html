@@ -87,35 +87,44 @@
     .deuda .btn,.deuda .btn2{padding:7px 11px;font-size:13px}
     .panel{padding:12px;margin-bottom:10px}
     .panel h2{font-size:15px;margin-bottom:8px}
-    form.grid{grid-template-columns:1fr 1.25fr 1.25fr;gap:6px}
-    form.grid .full{grid-column:1/-1}
-    form.grid label{font-size:11px;margin-bottom:2px}
-    form.grid input{padding:7px 8px;font-size:14px}
-    form.grid .btn,form.grid .btn2{padding:7px 12px;font-size:13px}
+    .panel h2#fTitulo{font-size:13px;margin-bottom:6px}
+    form.grid{grid-template-columns:0.8fr 1.25fr 1fr auto;gap:5px;align-items:end}
+    form.grid>div{min-width:0}
+    form.grid .full{grid-column:auto;display:flex;gap:4px}
+    form.grid label{font-size:10.5px;margin-bottom:2px}
+    form.grid input{padding:6px 6px;font-size:13px;min-width:0;height:32px}
+    input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block}
+    input[type=date]::-webkit-date-and-time-value{text-align:left}
+    input[type=date]::-webkit-calendar-picker-indicator{margin:0;padding:0;width:14px}
+    form.grid .btn,form.grid .btn2{padding:0 10px;font-size:12px;height:32px}
     .toolbar{gap:6px;margin-bottom:8px}
-    .toolbar input{max-width:none;flex:1;padding:6px 8px;font-size:13px;min-width:0}
+    .toolbar h2{font-size:14px!important}
+    .toolbar input{max-width:none;flex:1;padding:5px 8px;font-size:12.5px;min-width:0}
     .toolbar .sp{display:none}
     #copiar{display:none}
     table.main{display:none}
     .movil{display:block}
-    .rc{border:1px solid var(--linea);border-radius:10px;padding:9px 10px;margin-bottom:7px}
+    .rc{border:1px solid var(--linea);border-radius:9px;padding:7px 9px;margin-bottom:6px}
     .rc .l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-    .rc .n{font-weight:700;font-size:15px}
-    .rc .f{color:var(--gris);font-size:12.5px;margin-left:6px;font-weight:400}
-    .rc .imp{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
-    .rc .l2{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px}
-    .rc .est{font-size:12.5px;color:var(--gris);line-height:1.35;min-width:0}
+    .rc .n{font-weight:700;font-size:13.5px}
+    .rc .f{color:var(--gris);font-size:11.5px;margin-left:6px;font-weight:400}
+    .rc .imp{font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .rc .l2{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px}
+    .rc .est{font-size:11.5px;color:var(--gris);line-height:1.3;min-width:0}
     .rc .est .pg{white-space:nowrap}
     .rc .est b{font-variant-numeric:tabular-nums}
-    .rc .bts{display:flex;gap:4px;flex-shrink:0}
-    .rc .bts button{padding:4px 8px;font-size:12px;border-radius:7px}
-    .chip{display:inline-block;white-space:nowrap;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;margin-top:2px}
+    .rc .bts{display:flex;gap:3px;flex-shrink:0}
+    .rc .bts button{padding:3px 7px;font-size:11px;border-radius:6px;font-weight:600}
+    .chip{display:inline-block;white-space:nowrap;font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:999px;margin-top:2px}
     .chip.ok{background:#e3f3e9;color:var(--verde)}
     .chip.pd{background:#fde3e1;color:#b3201b}
     .chip.ex{background:#e3f3e9;color:var(--verde)}
-    .tot-m{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12.5px;border-top:2px solid var(--linea);padding-top:8px;margin-top:4px}
+    .tot-m{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;font-size:11.5px;border-top:2px solid var(--linea);padding-top:6px;margin-top:4px}
     .tot-m div{display:flex;justify-content:space-between}
     .tot-m b{font-variant-numeric:tabular-nums}
+    table.det{font-size:12px}
+    table.det td{padding:5px 4px}
+    table.det .mini{padding:3px 6px;font-size:11px}
     .modal{padding:16px}
     .modal h3{font-size:16px}
   }
