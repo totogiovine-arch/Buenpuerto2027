@@ -2700,7 +2700,8 @@
               iCalUID: "bp-" + base + "@buenpuerto",
               summary: "Ingreso: " + nombre + lapiz + " — " + u.nombre + " (" + u.codigo + ")",
               description: desc,
-              start: gcalHoraLocal(fechaIn, 14, 0), end: gcalHoraLocal(fechaIn, 15, 0)
+              start: gcalHoraLocal(fechaIn, 14, 0), end: gcalHoraLocal(fechaIn, 15, 0),
+              avisos: [240, 4320]   // ingreso 14:00 → aviso a las 10:00 del mismo día y 72 hs antes
             });
           }
           if(hayEgreso && fechaOut){
@@ -2708,7 +2709,8 @@
               iCalUID: "bp-eg-" + base + "@buenpuerto",
               summary: "Egreso: " + nombre + lapiz + " — " + u.nombre + " (" + u.codigo + ")",
               description: desc,
-              start: gcalHoraLocal(fechaOut, 10, 0), end: gcalHoraLocal(fechaOut, 10, 30)
+              start: gcalHoraLocal(fechaOut, 10, 0), end: gcalHoraLocal(fechaOut, 10, 30),
+              avisos: [120, 4320]   // egreso 10:00 → aviso a las 8:00 del mismo día y 72 hs antes
             });
           }
         });
@@ -2719,6 +2721,9 @@
 
   function gcalMismoEvento(a, b){
     const f = x=> x && (x.dateTime ? x.dateTime.slice(0,16) : x.date);
+    const av = x=> ((x.reminders && x.reminders.overrides) || []).map(o=> o.minutes).sort((p,q)=>p-q).join(",");
+    const avDeseado = (a.avisos || []).slice().sort((p,q)=>p-q).join(",");
+    if(av(b) !== avDeseado) return false;
     return a.summary === b.summary && (a.description||"") === (b.description||"") &&
            f(a.start) === f(b.start) && f(a.end) === f(b.end) && !b.start.date === !a.start.date;
   }
@@ -2770,7 +2775,7 @@
         if(vistos[d.iCalUID]) continue;
         vistos[d.iCalUID] = true;
         const cuerpo = {iCalUID:d.iCalUID, status:"confirmed", summary:d.summary, description:d.description, start:d.start, end:d.end,
-                        reminders:{useDefault:false, overrides:[{method:"popup", minutes:60}]}};
+                        reminders:{useDefault:false, overrides:(d.avisos||[60]).map(m=>({method:"popup", minutes:m}))}};
         const ex = existentes[d.iCalUID];
         const cancelado = ex && ex.status === "cancelled";
         if(ex && !cancelado && gcalMismoEvento(d, ex)) continue;   // ya está igual
