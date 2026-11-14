@@ -104,11 +104,12 @@
     .rc .f{color:var(--gris);font-size:12.5px;margin-left:6px;font-weight:400}
     .rc .imp{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
     .rc .l2{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px}
-    .rc .est{font-size:12.5px;color:var(--gris);line-height:1.35}
+    .rc .est{font-size:12.5px;color:var(--gris);line-height:1.35;min-width:0}
+    .rc .est .pg{white-space:nowrap}
     .rc .est b{font-variant-numeric:tabular-nums}
     .rc .bts{display:flex;gap:4px;flex-shrink:0}
     .rc .bts button{padding:4px 8px;font-size:12px;border-radius:7px}
-    .chip{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;margin-top:2px}
+    .chip{display:inline-block;white-space:nowrap;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;margin-top:2px}
     .chip.ok{background:#e3f3e9;color:var(--verde)}
     .chip.pd{background:#fde3e1;color:#b3201b}
     .chip.ex{background:#e3f3e9;color:var(--verde)}
@@ -372,7 +373,7 @@
     const v=visibles();
     if(!v.length){const t=remitos.length?"No hay remitos con esa búsqueda.":"Todavía no cargaste remitos.";$("lista").innerHTML=`<tr><td colspan="7" class="vacio">${t}</td></tr>`;$("pie").innerHTML="";$("listaMov").innerHTML=`<div class="vacio">${t}</div>`;return}
     $("listaMov").innerHTML=v.map(r=>{const c=calc(r);
-      const est=c.pag?`Pagado <b>${fmt.format(c.pag)}</b><br>`:"Sin pagos<br>";
+      const est=c.pag?`<span class="pg">Pagado <b>${fmt.format(c.pag)}</b></span><br>`:"Sin pagos<br>";
       const chip=c.exceso?`<span class="chip ex">Excedente ${fmt.format(c.exceso)}</span>`:c.saldo?`<span class="chip pd">Saldo ${fmt.format(c.saldo)}</span>`:`<span class="chip ok">Cancelado</span>`;
       return `<div class="rc"><div class="l1"><span class="n">${esc(r.numero)}<span class="f">${fF(r.fecha)}</span></span><span class="imp">${fmt.format(c.imp)}</span></div>
         <div class="l2"><div class="est">${est}${chip}</div><div class="bts"><button class="btn-ok" data-a="pago" data-id="${r.id}">+ Pago</button><button class="btn2" data-a="det" data-id="${r.id}">Detalle</button><button class="btn2" data-a="edit" data-id="${r.id}" title="Editar">✎</button><button class="btn2" data-a="del" data-id="${r.id}" title="Borrar">✕</button></div></div></div>`}).join("")+
