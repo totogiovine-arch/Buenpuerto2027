@@ -224,7 +224,6 @@
         del:id=>w(()=>upd({["remitos."+id]:F.deleteField()}),"No se pudo borrar."),
         deuda:o=>w(()=>F.setDoc(ref,{deuda:o},{merge:true}))
       };
-      window.__copaniImportar=async data=>{await F.setDoc(ref,data,{merge:true});return "ok"};
       F.onSnapshot(ref,snap=>{clearTimeout(timer);banner("");
         const d=snap.exists()?snap.data():{};
         remitos=Object.entries(d.remitos||{}).map(([id,r])=>({...r,id}));
